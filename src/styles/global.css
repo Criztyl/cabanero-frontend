@@ -1,0 +1,376 @@
+/* ============================================
+   STRUCTURA - A Modern Academic Management System
+   Design: Glassmorphism + Dark Mode
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ============================================
+   ROOT VARIABLES - Light Theme (Default)
+   ============================================ */
+
+:root[data-theme="light"] {
+  /* Colors */
+  --primary-color: #6c5ce7;
+  --primary-dark: #5f3dc4;
+  --primary-light: #8b7aff;
+  --accent-color: #ff6b6b;
+  --success-color: #51cf66;
+  --warning-color: #ffa94d;
+  --danger-color: #ff7675;
+
+  /* Neutral Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f7f7f7;
+  --bg-tertiary: #f0f0f0;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --border-color: #e0e0e0;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+}
+
+:root[data-theme="dark"] {
+  /* Colors */
+  --primary-color: #8b7aff;
+  --primary-dark: #6c5ce7;
+  --primary-light: #a8a1ff;
+  --accent-color: #ff8787;
+  --success-color: #69db7c;
+  --warning-color: #ffa94d;
+  --danger-color: #ff8787;
+
+  /* Neutral Colors */
+  --bg-primary: #121212;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #242424;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-tertiary: #808080;
+  --border-color: #333333;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(30, 30, 30, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   GLOBAL STYLES
+   ============================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  line-height: 1.6;
+}
+
+input, button, textarea, select {
+  font-family: 'Inter', sans-serif;
+}
+
+/* ============================================
+   AUTHENTICATION PAGES (Login & Sign Up)
+   ============================================ */
+
+/* ============================================
+   AUTHENTICATION LAYOUT & MEDIA QUERIES
+   ============================================ */
+
+/* ============================================
+   1. THE CONTAINER (THE STAGE)
+   ============================================ */
+.auth-container {
+  min-height: 100vh;
+  width: 100vw;            /* Force full browser width */
+  display: flex;
+  align-items: center;     /* Vertical center */
+  justify-content: center;  /* THIS CENTERS THE BOX HORIZONTALLY */
+  background: var(--bg-dark);
+  position: relative;
+  overflow-x: hidden;
+}
+
+.auth-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 40px;
+  width: 100%;
+  /* Default small width for mobile */
+  max-width: 400px; 
+  transition: all 0.3s ease;
+}
+
+/* MEDIA QUERY: For tablets and small laptops */
+@media (min-width: 768px) {
+  .auth-box {
+    max-width: 550px; /* Wider login form */
+  }
+  
+  /* Make the Sign-Up even wider because it has more fields */
+  .auth-box:has(.signup-fields-container) {
+    max-width: 800px;
+  }
+
+  .signup-fields-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns of fill-ups */
+    gap: 20px;
+  }
+}
+
+/* MEDIA QUERY: For your widescreen (Desktop) */
+@media (min-width: 1200px) {
+  .auth-box {
+    max-width: 600px; /* Large login fill-ups */
+  }
+
+  .auth-box:has(.signup-fields-container) {
+    max-width: 1000px; /* Wide Sign-Up grid */
+  }
+}
+
+/* FILL-UP STYLING */
+.form-group {
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.form-group input, 
+.form-group select {
+  width: 100%; /* Forces the fill-up to take the full width of the box */
+  padding: 16px 20px;
+  background: #1c1c21;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+}
+
+/* Animated background elements */
+.auth-container::before,
+.auth-container::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-container::before {
+  width: 400px;
+  height: 400px;
+  top: -50px;
+  right: -50px;
+  animation: float 8s ease-in-out infinite;
+}
+
+.auth-container::after {
+  width: 300px;
+  height: 300px;
+  bottom: -30px;
+  left: -30px;
+  animation: float 10s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(30px); }
+}
+
+.auth-box {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 50px 40px;
+  /* FIXED: Increased width so inputs are not small */
+  max-width: 600px; 
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.6s ease-out;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.auth-logo {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+  letter-spacing: -1px;
+}
+
+.auth-header h2 {
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.auth-header p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  width: 100%; /* FIXED: Ensures container takes full width */
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input {
+  width: 100%; /* FIXED: Ensures input takes full width */
+  padding: 16px; /* FIXED: Made padding larger for bigger fill-ups */
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 16px; /* FIXED: Larger font size */
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+  background: var(--bg-primary);
+}
+
+.form-group select {
+  width: 100%;
+  padding: 16px; /* FIXED: Larger select box */
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 16px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.auth-btn {
+  width: 100%;
+  padding: 16px; /* FIXED: Larger button */
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  margin-top: 10px;
+}
+
+.auth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 30px 0;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.divider span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.auth-footer a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* ============================================
+   DASHBOARD LAYOUT (UNCHANGED)
+   ============================================ */
+
+.dashboard-wrapper {
+  display: flex;
+  height: 100vh;
+  background: var(--bg-primary);
+}
+
+.sidebar {
+  width: 280px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 100;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 280px;
+  padding: 40px;
+  background: var(--bg-primary);
+}

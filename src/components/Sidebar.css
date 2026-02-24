@@ -1,0 +1,86 @@
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  background: rgba(10, 10, 12, 0.8); /* Dark base */
+  backdrop-filter: blur(12px); /* Glass effect */
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 50px;
+  padding-left: 15px;
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-link:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* The Glowing Active State */
+.nav-link.active {
+  color: white;
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.1) 0%, transparent 100%);
+}
+
+.nav-link.active svg {
+  color: var(--primary-color);
+  filter: drop-shadow(0 0 5px var(--primary-color));
+}
+
+/* Vertical Neon Indicator Line */
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 4px;
+  background: var(--primary-color);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 15px var(--primary-color);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* Tooltip style for titles when sidebar is narrow (Optional) */
+.nav-link span {
+  transition: opacity 0.3s;
+}
