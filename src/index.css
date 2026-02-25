@@ -1,5 +1,30 @@
-/* Root element */
+/* ============================================
+   BASE RESET — must come before everything else
+   ============================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;          /* kills the default 8px browser margin */
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* React mount point — must fill the viewport so flex centering works */
 #root {
   width: 100%;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }

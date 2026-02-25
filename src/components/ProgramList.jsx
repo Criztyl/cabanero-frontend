@@ -1,199 +1,189 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { Search } from 'lucide-react';
 import { programsData } from '../data/programsData';
 import './ProgramList.css';
 
 function ProgramList() {
-  const [programs] = useState(programsData);
+  const [programs]          = useState(programsData);
   const [selectedProgram, setSelectedProgram] = useState(null);
+  const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
-  const filteredPrograms = filter === 'all' 
-    ? programs 
-    : programs.filter(p => p.status === filter);
+  const filteredPrograms = useMemo(() => {
+    return programs.filter(p => {
+      const matchStatus = filter === 'all' || p.status === filter;
+      const q = search.toLowerCase();
+      const matchSearch =
+        !q ||
+        p.code.toLowerCase().includes(q) ||
+        p.name?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.type?.toLowerCase().includes(q);
+      return matchStatus && matchSearch;
+    });
+  }, [programs, filter, search]);
 
   return (
     <div className="program-list-container">
-      {/* Header Section */}
-      <div className="page-header" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '30px',
-        flexWrap: 'wrap',
-        gap: '20px'
-      }}>
-        <div>
-          <h1 className="page-title">Program Offerings</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '5px' }}>
-            Browse all available degree programs
-          </p>
+
+      {/* ── PAGE HEADER ──────────────────────────── */}
+      <div style={{ marginBottom: '28px' }}>
+        <h1 className="page-title">Program Offerings</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '6px' }}>
+          Browse all available degree programs
+        </p>
+      </div>
+
+      {/* ── CONTROLS ROW ─────────────────────────── */}
+      <div className="controls-row" style={{ marginBottom: '28px' }}>
+
+        {/* Search bar */}
+        <div className="search-bar" style={{ flex: 1, minWidth: '220px', maxWidth: '400px' }}>
+          <span className="search-bar-icon"><Search size={15} /></span>
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search programs…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
-        {/* Status Filter - Updated to use standard Cyber classes */}
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {['all', 'active', 'under review'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`filter-btn ${filter === status ? 'active' : ''}`}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: '1px solid var(--glass-border)',
-                background: filter === status ? 'var(--primary-color)' : 'var(--glass-bg)',
-                color: 'white',
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-                transition: '0.3s'
-              }}
+        {/* Status filter — dropdown */}
+        <select
+          className="filter-select"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="under review">Under Review</option>
+        </select>
+
+      </div>
+
+      {/* ── PROGRAMS GRID ────────────────────────── */}
+      {filteredPrograms.length > 0 ? (
+        <div className="programs-grid">
+          {filteredPrograms.map(program => (
+            <div
+              key={program.id}
+              className="program-card"
+              onClick={() => setSelectedProgram(program)}
             >
-              {status}
-            </button>
+              {/* Card header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div>
+                  <h3 className="card-title">{program.code}</h3>
+                  <p className="card-subtitle">{program.type}</p>
+                </div>
+                <span className={`badge ${program.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
+                  {program.status}
+                </span>
+              </div>
+
+              {/* Description */}
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '18px', lineHeight: '1.6', flex: 1 }}>
+                {program.description?.substring(0, 90)}…
+              </p>
+
+              {/* Info grid */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px',
+                marginBottom: '18px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)'
+              }}>
+                <div>
+                  <p style={{ color: 'var(--secondary-color)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>Duration</p>
+                  <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{program.duration}</p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--secondary-color)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>Units</p>
+                  <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{program.totalUnits}</p>
+                </div>
+              </div>
+
+              <button
+                className="btn-primary"
+                onClick={(e) => { e.stopPropagation(); setSelectedProgram(program); }}
+                style={{ width: '100%' }}
+              >
+                View Details
+              </button>
+            </div>
           ))}
         </div>
-      </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '64px 20px', color: 'var(--text-muted)' }}>
+          <Search size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
+          <p>No programs match your search</p>
+        </div>
+      )}
 
-      {/* Programs Grid */}
-      <div className="programs-grid">
-        {filteredPrograms.map(program => (
-          <div
-            key={program.id}
-            className="program-card"
-            onClick={() => setSelectedProgram(program)}
-          >
-            {/* Card Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              marginBottom: '15px'
-            }}>
-              <div>
-                <h3 className="card-title">{program.code}</h3>
-                <p className="card-subtitle">{program.type}</p>
-              </div>
-              <span className={`badge ${program.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
-                {program.status}
-              </span>
-            </div>
-
-            {/* Description */}
-            <p style={{
-              color: 'var(--text-muted)',
-              fontSize: '13px',
-              marginBottom: '20px',
-              lineHeight: '1.6'
-            }}>
-              {program.description.substring(0, 80)}...
-            </p>
-
-            {/* Info Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '12px',
-              marginBottom: '20px',
-              paddingTop: '15px',
-              borderTop: '1px solid var(--glass-border)'
-            }}>
-              <div>
-                <p style={{ color: 'var(--secondary-color)', fontSize: '11px', textTransform: 'uppercase' }}>Duration</p>
-                <p style={{ fontWeight: 600, fontSize: '14px' }}>{program.duration}</p>
-              </div>
-              <div>
-                <p style={{ color: 'var(--secondary-color)', fontSize: '11px', textTransform: 'uppercase' }}>Units</p>
-                <p style={{ fontWeight: 600, fontSize: '14px' }}>{program.totalUnits}</p>
-              </div>
-            </div>
-
-            {/* Action Button */}
-            <button
-              className="btn-primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedProgram(program);
-              }}
-              style={{ width: '100%' }}
-            >
-              View Details
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Details Modal */}
+      {/* ── MODAL ────────────────────────────────── */}
       {selectedProgram && (
-        <div className="modal-overlay" onClick={() => setSelectedProgram(null)} style={{
-          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
-            background: 'var(--bg-panel)', border: '1px solid var(--glass-border)',
-            padding: '30px', borderRadius: '24px', maxWidth: '600px', width: '90%',
-            maxHeight: '90vh', overflowY: 'auto', position: 'relative'
-          }}>
-            <div className="modal-header" style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700 }}>{selectedProgram.code}</h2>
-              <p className="card-subtitle">{selectedProgram.name}</p>
-              <button 
-                className="modal-close" 
-                onClick={() => setSelectedProgram(null)}
-                style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}
-              >✕</button>
+        <div className="modal-overlay" onClick={() => setSelectedProgram(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+
+            <div className="modal-header">
+              <h2>{selectedProgram.code}</h2>
+              <p className="card-subtitle" style={{ marginTop: '4px' }}>{selectedProgram.name}</p>
             </div>
+            <button className="modal-close" onClick={() => setSelectedProgram(null)}>✕</button>
 
             <div className="modal-body">
-              <span className={`badge ${selectedProgram.status === 'active' ? 'badge-success' : 'badge-warning'}`} style={{ marginBottom: '20px', display: 'inline-block' }}>
+              <span className={`badge ${selectedProgram.status === 'active' ? 'badge-success' : 'badge-warning'}`}
+                style={{ marginBottom: '18px', display: 'inline-block' }}>
                 {selectedProgram.status.toUpperCase()}
               </span>
 
-              <div style={{ marginBottom: '25px' }}>
-                <h4 style={{ color: 'var(--secondary-color)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '8px' }}>Description</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6' }}>{selectedProgram.description}</p>
+              <div style={{ marginBottom: '22px' }}>
+                <h4 style={{ color: 'var(--secondary-color)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Description</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: '1.7' }}>{selectedProgram.description}</p>
               </div>
 
               <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px',
-                padding: '20px 0', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)',
-                marginBottom: '25px'
+                display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px',
+                padding: '18px 0', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)', marginBottom: '22px'
               }}>
-                <div>
-                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '11px' }}>Type</label>
-                  <span style={{ fontWeight: 600 }}>{selectedProgram.type}</span>
-                </div>
-                <div>
-                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '11px' }}>Duration</label>
-                  <span style={{ fontWeight: 600 }}>{selectedProgram.duration}</span>
-                </div>
+                {[['Type', selectedProgram.type], ['Duration', selectedProgram.duration],
+                  ['Total Units', selectedProgram.totalUnits], ['Status', selectedProgram.status]].map(([lbl, val]) => (
+                  <div key={lbl}>
+                    <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>{lbl}</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{val}</span>
+                  </div>
+                ))}
               </div>
 
-              <div>
-                <h4 style={{ fontSize: '14px', marginBottom: '15px' }}>Curriculum Structure</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {selectedProgram.yearLevels.map((level, idx) => (
-                    <div key={idx} style={{
-                      background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '12px',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                    }}>
-                      <span style={{ fontWeight: 500 }}>{level.year}</span>
-                      <span style={{ color: 'var(--secondary-color)', fontSize: '12px' }}>{level.subjects.length} Subjects</span>
-                    </div>
-                  ))}
+              {selectedProgram.yearLevels && (
+                <div>
+                  <h4 style={{ fontSize: '0.875rem', marginBottom: '12px', fontWeight: 700 }}>Curriculum Structure</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {selectedProgram.yearLevels.map((level, idx) => (
+                      <div key={idx} style={{
+                        background: 'rgba(255,255,255,0.04)', padding: '13px 16px', borderRadius: '10px',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        border: '1px solid var(--glass-border)'
+                      }}>
+                        <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{level.year}</span>
+                        <span style={{ color: 'var(--secondary-color)', fontSize: '11px', fontWeight: 600 }}>
+                          {level.subjects.length} Subjects
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <div className="modal-footer" style={{ marginTop: '30px', display: 'flex', gap: '10px' }}>
-              <button className="btn-primary" style={{ flex: 1 }}>Enroll Now</button>
-              <button 
-                onClick={() => setSelectedProgram(null)}
-                style={{ flex: 1, background: 'transparent', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', cursor: 'pointer' }}
-              >Close</button>
+            <div className="modal-footer">
+              <button className="btn-primary btn" style={{ flex: 1 }}>Enroll Now</button>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setSelectedProgram(null)}>Close</button>
             </div>
+
           </div>
         </div>
       )}
+
     </div>
   );
 }
