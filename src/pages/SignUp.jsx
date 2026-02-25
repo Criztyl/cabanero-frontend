@@ -4,13 +4,6 @@ import { Mail, Lock, User } from 'lucide-react';
 import { AppContext } from '../context/AppContext';
 import '../styles/global.css';
 
-const FEATURES = [
-  { icon: BookOpen,       text: 'Browse full curriculum across all degree programs' },
-  { icon: GraduationCap, text: 'Manage enrollment for 1,280+ active students'       },
-  { icon: BarChart2,     text: 'Real-time analytics and academic performance data'  },
-  { icon: Shield,        text: 'Secure, role-based access for staff and students'   },
-];
-
 function SignUp() {
   const navigate = useNavigate();
   const { login } = useContext(AppContext);
