@@ -5,7 +5,7 @@ import { AppContext } from '../context/AppContext';
 import '../styles/global.css';
 
 const FEATURES = [
-  { icon: BookOpen,       text: 'Browse full curriculum across all degree programs' },
+  { icon: BookOpen,      text: 'Browse full curriculum across all degree programs' },
   { icon: GraduationCap, text: 'Manage enrollment for 1,280+ active students'       },
   { icon: BarChart2,     text: 'Real-time analytics and academic performance data'  },
   { icon: Shield,        text: 'Secure, role-based access for staff and students'   },
@@ -14,31 +14,62 @@ const FEATURES = [
 function Login() {
   const navigate = useNavigate();
   const { login } = useContext(AppContext);
+  
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
+  const [error,    setError]    = useState('');
   const [role,     setRole]     = useState('student');
   const [loading,  setLoading]  = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setTimeout(() => {
-      login(email, password, role);
-      navigate('/dashboard');
+
+    try {
+      // 1. Send request to the Laravel API
+      const response = await fetch("http://127.0.0.1:8000/api/login", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json" 
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // 2. Save the token to local storage
+        localStorage.setItem("token", data.token);
+        
+        // 3. Update Global Context and Navigate
+        if (login) {
+          login(data.user, data.token, role); 
+          navigate('/dashboard');
+        } else {
+          console.error("Login function not found in AppContext");
+          setError("System Error: Auth context not initialized.");
+        }
+      } else {
+        // Handle "Invalid credentials" from Laravel AuthController
+        setError(data.message || "Invalid credentials. Please try again.");
+      }
+    } catch (err) {
+      console.error("Connection Error:", err);
+      setError("Unable to connect to the server. Is Laravel running?");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
     <div className="auth-split-page">
-
-      {/* Shared dot-grid texture across the whole page */}
       <div className="auth-grid-texture" />
 
-      {/* ── LEFT  BRANDING PANEL ─────────────────── */}
+      {/* LEFT BRANDING PANEL */}
       <div className="auth-split-left">
         <div className="auth-left-glow" />
-
         <div className="auth-brand-logo">STRUCTURA</div>
         <p className="auth-brand-tagline">Academic Management Platform</p>
 
@@ -49,7 +80,7 @@ function Login() {
 
         <p className="auth-brand-sub">
           STRUCTURA centralizes your institution's programs, curriculum, and student
-          data into one powerful, modern platform — designed for speed, clarity, and control.
+          data into one powerful, modern platform.
         </p>
 
         <ul className="auth-features">
@@ -71,21 +102,35 @@ function Login() {
         </div>
       </div>
 
-      {/* ── RIGHT FORM PANEL ─────────────────────── */}
+      {/* RIGHT FORM PANEL */}
       <div className="auth-split-right">
         <div className="auth-box">
-
           <div style={{ marginBottom: '28px' }}>
             <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
               Welcome back
             </h2>
-            <p style={{ color: '#52525b', fontSize: '0.85rem' }}>
+            <p style={{ color: '#a1a1aa', fontSize: '0.85rem' }}>
               Sign in to access your academic portal
             </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          {/* ERROR DISPLAY BLOCK (CRUCIAL ADDITION) */}
+          {error && (
+            <div style={{ 
+              color: '#ff4d4d', 
+              backgroundColor: 'rgba(255, 77, 77, 0.1)', 
+              padding: '12px', 
+              borderRadius: '8px', 
+              fontSize: '0.85rem', 
+              marginBottom: '20px',
+              border: '1px solid rgba(255, 77, 77, 0.2)',
+              textAlign: 'center'
+            }}>
+              {error}
+            </div>
+          )}
 
+          <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Sign in as</label>
               <select value={role} onChange={(e) => setRole(e.target.value)}>
@@ -99,7 +144,7 @@ function Login() {
               <div style={{ position: 'relative' }}>
                 <Mail size={15} style={{
                   position: 'absolute', left: '14px', top: '50%',
-                  transform: 'translateY(-50%)', color: '#3f3f46', pointerEvents: 'none'
+                  transform: 'translateY(-50%)', color: '#71717a', pointerEvents: 'none'
                 }} />
                 <input
                   type="email"
@@ -117,7 +162,7 @@ function Login() {
               <div style={{ position: 'relative' }}>
                 <Lock size={15} style={{
                   position: 'absolute', left: '14px', top: '50%',
-                  transform: 'translateY(-50%)', color: '#3f3f46', pointerEvents: 'none'
+                  transform: 'translateY(-50%)', color: '#71717a', pointerEvents: 'none'
                 }} />
                 <input
                   type="password"
@@ -136,19 +181,16 @@ function Login() {
               disabled={loading}
               style={{ marginTop: '20px' }}
             >
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
-
           </form>
 
           <div className="auth-footer">
             Don't have an account?{' '}
             <Link to="/signup">Create one</Link>
           </div>
-
         </div>
       </div>
-
     </div>
   );
 }
