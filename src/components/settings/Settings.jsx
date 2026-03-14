@@ -1,385 +1,294 @@
 import { useState, useContext } from 'react';
+import { User, Moon, Sun, Bell, Shield, Save, Check } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
-import { User, Lock, Bell, Moon, Sun, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import './Settings.css';
+import api from '../../services/api';
 
-function Settings() {
-  const navigate = useNavigate();
-  const { currentUser, updateUser, logout, darkMode, toggleDarkMode } = useContext(AppContext);
-  const [activeTab, setActiveTab] = useState('profile');
-  const [formData, setFormData] = useState({
-    name: currentUser?.name || '',
-    email: currentUser?.email || '',
+const TAB_ICONS = { Profile: User, Appearance: Moon, Notifications: Bell, Security: Shield };
+
+export default function Settings() {
+  const { currentUser, setCurrentUser, theme, toggleTheme,
+          compactSidebar, toggleCompact, notifications, updateNotifications } = useContext(AppContext);
+
+  const [activeTab,   setActiveTab]   = useState('Profile');
+  const [saved,       setSaved]       = useState('');
+  const [error,       setError]       = useState('');
+  const [saving,      setSaving]      = useState(false);
+
+  const [profile, setProfile] = useState({
+    name:       currentUser?.name       || '',
+    email:      currentUser?.email      || '',
     department: currentUser?.department || '',
-    phone: '+63 (977) 123-4567'
-  });
-  const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    courseUpdates: true
+    phone:      currentUser?.phone      || '',
   });
 
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const [passwords, setPasswords] = useState({
+    current_password:'', new_password:'', confirm_password:''
+  });
+
+  const [notifPrefs, setNotifPrefs] = useState({
+    email:   notifications?.email   ?? true,
+    push:    notifications?.push    ?? true,
+    courses: notifications?.courses ?? true,
+  });
+
+  const showSaved = (msg = 'Changes saved!') => {
+    setSaved(msg); setTimeout(() => setSaved(''), 3000);
   };
 
-  const handleProfileSave = () => {
-    updateUser({
-      name: formData.name,
-      email: formData.email,
-      department: formData.department
-    });
-    alert('Profile updated successfully!');
+  const handleSaveProfile = async (e) => {
+    e.preventDefault(); setError(''); setSaving(true);
+    try {
+      const res = await api.put('/profile', profile);
+      setCurrentUser(res.data.user);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      showSaved('Profile updated!');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save profile.');
+    } finally { setSaving(false); }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleChangePassword = async (e) => {
+    e.preventDefault(); setError(''); setSaving(true);
+    if (passwords.new_password !== passwords.confirm_password) {
+      setError('New passwords do not match.'); setSaving(false); return;
+    }
+    try {
+      await api.put('/change-password', {
+        current_password: passwords.current_password,
+        new_password:     passwords.new_password,
+      });
+      setPasswords({ current_password:'', new_password:'', confirm_password:'' });
+      showSaved('Password changed!');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Incorrect current password.');
+    } finally { setSaving(false); }
   };
 
-  const handleNotificationChange = (e) => {
-    const { name, checked } = e.target;
-    setNotifications(prev => ({
-      ...prev,
-      [name]: checked
-    }));
+  const handleSaveNotifications = () => {
+    updateNotifications(notifPrefs);
+    showSaved('Notification preferences saved!');
+  };
+
+  const inputStyle = {
+    width:'100%', background:'rgba(255,255,255,0.05)',
+    border:'1px solid var(--glass-border)', borderRadius:'10px',
+    padding:'10px 14px', color:'#fff', fontSize:'14px',
+    outline:'none', boxSizing:'border-box',
+  };
+  const labelStyle = {
+    fontSize:'12px', color:'var(--text-muted)', display:'block',
+    marginBottom:'6px', textTransform:'uppercase', letterSpacing:'0.5px'
   };
 
   return (
-    <div className="settings-container">
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '30px'
-      }}>
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '5px' }}>Settings</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Manage your account and preferences</p>
-        </div>
+    <div className="dashboard-wrapper-inner">
+      <div style={{ marginBottom:'28px' }}>
+        <h1 style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, margin:0 }}>Settings</h1>
+        <p style={{ color:'var(--text-muted)', marginTop:'5px', fontSize:'14px' }}>
+          Manage your account and preferences
+        </p>
       </div>
 
-      <div className="settings-layout">
-        {/* Tabs */}
-        <div className="settings-tabs">
-          <button
-            className={`settings-tab ${activeTab === 'profile' ? 'active' : ''}`}
-            onClick={() => setActiveTab('profile')}
-          >
-            <User size={18} />
-            <span>Profile</span>
-          </button>
-          <button
-            className={`settings-tab ${activeTab === 'theme' ? 'active' : ''}`}
-            onClick={() => setActiveTab('theme')}
-          >
-            <Moon size={18} />
-            <span>Appearance</span>
-          </button>
-          <button
-            className={`settings-tab ${activeTab === 'notifications' ? 'active' : ''}`}
-            onClick={() => setActiveTab('notifications')}
-          >
-            <Bell size={18} />
-            <span>Notifications</span>
-          </button>
-          <button
-            className={`settings-tab ${activeTab === 'security' ? 'active' : ''}`}
-            onClick={() => setActiveTab('security')}
-          >
-            <Lock size={18} />
-            <span>Security</span>
-          </button>
+      <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', gap:'20px' }}>
+        {/* Sidebar tabs */}
+        <div className="program-card" style={{ padding:'12px', height:'fit-content' }}>
+          {Object.entries(TAB_ICONS).map(([tab, Icon]) => (
+            <button key={tab} onClick={() => { setActiveTab(tab); setError(''); setSaved(''); }}
+              style={{
+                display:'flex', alignItems:'center', gap:'12px', width:'100%',
+                padding:'10px 14px', borderRadius:'10px', border:'none',
+                background: activeTab===tab ? 'rgba(255,0,85,0.15)' : 'transparent',
+                borderLeft: activeTab===tab ? '3px solid var(--primary-color)' : '3px solid transparent',
+                color: activeTab===tab ? '#fff' : 'var(--text-muted)',
+                cursor:'pointer', fontSize:'14px', fontWeight: activeTab===tab ? 600 : 400,
+                textAlign:'left', transition:'all 0.2s', marginBottom:'2px'
+              }}>
+              <Icon size={16} />
+              {tab}
+            </button>
+          ))}
         </div>
 
-        {/* Tab Content */}
-        <div className="settings-content">
-          {/* Profile Tab */}
-          {activeTab === 'profile' && (
-            <div className="settings-panel">
-              <h2 style={{ marginBottom: '20px' }}>Profile Information</h2>
+        {/* Content */}
+        <div className="program-card" style={{ cursor:'default' }}>
+          {saved && (
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(0,255,133,0.1)',
+                          border:'1px solid rgba(0,255,133,0.2)', borderRadius:'10px',
+                          padding:'10px 14px', marginBottom:'20px', color:'#00ff85', fontSize:'14px' }}>
+              <Check size={16} /> {saved}
+            </div>
+          )}
+          {error && (
+            <div style={{ background:'rgba(255,68,102,0.1)', border:'1px solid rgba(255,68,102,0.2)',
+                          borderRadius:'10px', padding:'10px 14px', marginBottom:'20px',
+                          color:'#ff4466', fontSize:'14px' }}>
+              {error}
+            </div>
+          )}
 
-              {/* Avatar Section */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px',
-                marginBottom: '30px',
-                paddingBottom: '30px',
-                borderBottom: '1px solid var(--border-color)'
-              }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: `linear-gradient(135deg, var(--primary-color), var(--primary-dark))`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '32px',
-                  fontWeight: 700
-                }}>
+          {/* ── PROFILE ── */}
+          {activeTab === 'Profile' && (
+            <form onSubmit={handleSaveProfile}>
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Profile Information</h2>
+              {/* Avatar */}
+              <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'24px' }}>
+                <div style={{ width:'64px', height:'64px', borderRadius:'50%',
+                              background:'var(--primary-color)', display:'flex', alignItems:'center',
+                              justifyContent:'center', fontSize:'24px', fontWeight:700, flexShrink:0 }}>
                   {currentUser?.name?.charAt(0).toUpperCase()}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: 600, marginBottom: '4px' }}>{currentUser?.name}</p>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '10px' }}>
-                    {currentUser?.role === 'admin' ? 'Administrator' : 'Student'}
+                <div>
+                  <p style={{ fontWeight:600, fontSize:'16px' }}>{currentUser?.name}</p>
+                  <p style={{ color:'var(--text-muted)', fontSize:'13px', textTransform:'capitalize' }}>
+                    {currentUser?.role || 'Student'}
                   </p>
-                  <button className="btn btn-secondary" style={{ fontSize: '12px' }}>
-                    Change Avatar
-                  </button>
                 </div>
               </div>
 
-              {/* Form Fields */}
-              <div style={{ display: 'grid', gap: '20px' }}>
-                <div className="form-group">
-                  <label>Full Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleProfileChange}
-                    placeholder="Your name"
-                  />
-                </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
+                {[
+                  { label:'Full Name',   name:'name',       type:'text'  },
+                  { label:'Email',       name:'email',      type:'email' },
+                  { label:'Department',  name:'department', type:'text'  },
+                  { label:'Phone',       name:'phone',      type:'text'  },
+                ].map(f => (
+                  <div key={f.name}>
+                    <label style={labelStyle}>{f.label}</label>
+                    <input type={f.type} value={profile[f.name]}
+                      onChange={e => setProfile(p => ({...p, [f.name]: e.target.value}))}
+                      style={inputStyle} />
+                  </div>
+                ))}
+              </div>
 
-                <div className="form-group">
-                  <label>Email Address</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleProfileChange}
-                    placeholder="your.email@structura.edu"
-                  />
-                </div>
+              <button type="submit" disabled={saving}
+                style={{ marginTop:'24px', display:'flex', alignItems:'center', gap:'8px',
+                         background:'var(--primary-color)', border:'none', borderRadius:'10px',
+                         padding:'10px 24px', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'14px' }}>
+                <Save size={15} /> {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </form>
+          )}
 
-                <div className="form-group">
-                  <label>Department</label>
-                  <input
-                    type="text"
-                    name="department"
-                    value={formData.department}
-                    onChange={handleProfileChange}
-                    placeholder="Your department"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Phone Number</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="Your phone number"
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                  <button className="btn btn-primary" onClick={handleProfileSave}>
-                    Save Changes
-                  </button>
-                  <button className="btn btn-secondary">
-                    Cancel
-                  </button>
-                </div>
+          {/* ── APPEARANCE ── */}
+          {activeTab === 'Appearance' && (
+            <div>
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Appearance Settings</h2>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'24px' }}>
+                {[
+                  { label:'Light', value:'light', icon:'☀️', desc:'Choose a light interface' },
+                  { label:'Dark',  value:'dark',  icon:'🌙', desc:'Choose a dark interface'  },
+                ].map(t => (
+                  <div key={t.value} onClick={toggleTheme}
+                    style={{
+                      border:`2px solid ${theme===t.value ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                      borderRadius:'12px', padding:'24px', cursor:'pointer', textAlign:'center',
+                      background: theme===t.value ? 'rgba(255,0,85,0.08)' : 'transparent',
+                      transition:'all 0.2s'
+                    }}>
+                    <div style={{ fontSize:'32px', marginBottom:'12px' }}>{t.icon}</div>
+                    <p style={{ fontWeight:600, marginBottom:'4px' }}>{t.label}</p>
+                    <p style={{ fontSize:'12px', color:'var(--text-muted)' }}>{t.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderTop:'1px solid var(--glass-border)', paddingTop:'20px' }}>
+                <h3 style={{ fontSize:'15px', fontWeight:600, marginBottom:'14px' }}>Compact View</h3>
+                <label style={{ display:'flex', alignItems:'center', gap:'12px', cursor:'pointer' }}>
+                  <div onClick={toggleCompact}
+                    style={{
+                      width:'44px', height:'24px', borderRadius:'12px', position:'relative',
+                      background: compactSidebar ? 'var(--primary-color)' : 'rgba(255,255,255,0.15)',
+                      transition:'background 0.2s', cursor:'pointer', flexShrink:0
+                    }}>
+                    <div style={{
+                      position:'absolute', top:'3px',
+                      left: compactSidebar ? '23px' : '3px',
+                      width:'18px', height:'18px', borderRadius:'50%',
+                      background:'#fff', transition:'left 0.2s'
+                    }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize:'14px', fontWeight:500 }}>Enable compact sidebar</p>
+                    <p style={{ fontSize:'12px', color:'var(--text-muted)' }}>
+                      Collapse sidebar to icons only
+                    </p>
+                  </div>
+                </label>
               </div>
             </div>
           )}
 
-          {/* Theme Tab */}
-          {activeTab === 'theme' && (
-            <div className="settings-panel">
-              <h2 style={{ marginBottom: '20px' }}>Appearance Settings</h2>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '20px'
-              }}>
-                {/* Light Theme */}
-                <div className={`theme-card ${!darkMode ? 'active' : ''}`} onClick={() => !darkMode || toggleDarkMode()}>
-                  <div style={{
-                    background: '#ffffff',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '12px',
-                    padding: '40px',
-                    marginBottom: '12px',
-                    textAlign: 'center'
-                  }}>
-                    <Sun size={32} color="#6c5ce7" />
+          {/* ── NOTIFICATIONS ── */}
+          {activeTab === 'Notifications' && (
+            <div>
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Notification Preferences</h2>
+              {[
+                { key:'email',   label:'Email Notifications',  desc:'Receive updates via email'              },
+                { key:'push',    label:'Push Notifications',    desc:'Receive browser notifications'          },
+                { key:'courses', label:'Course Updates',        desc:'Updates from your enrolled courses'     },
+              ].map(n => (
+                <div key={n.key}
+                  style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                           padding:'16px', borderRadius:'12px', border:'1px solid var(--glass-border)',
+                           marginBottom:'12px' }}>
+                  <div>
+                    <p style={{ fontSize:'14px', fontWeight:500 }}>{n.label}</p>
+                    <p style={{ fontSize:'12px', color:'var(--text-muted)', marginTop:'2px' }}>{n.desc}</p>
                   </div>
-                  <h3>Light</h3>
-                  <p>Choose a light interface</p>
-                </div>
-
-                {/* Dark Theme */}
-                <div className={`theme-card ${darkMode ? 'active' : ''}`} onClick={() => darkMode || toggleDarkMode()}>
-                  <div style={{
-                    background: '#121212',
-                    border: '1px solid #333333',
-                    borderRadius: '12px',
-                    padding: '40px',
-                    marginBottom: '12px',
-                    textAlign: 'center'
-                  }}>
-                    <Moon size={32} color="#8b7aff" />
+                  <div onClick={() => setNotifPrefs(p => ({...p, [n.key]: !p[n.key]}))}
+                    style={{
+                      width:'44px', height:'24px', borderRadius:'12px', position:'relative',
+                      background: notifPrefs[n.key] ? 'var(--primary-color)' : 'rgba(255,255,255,0.15)',
+                      transition:'background 0.2s', cursor:'pointer', flexShrink:0
+                    }}>
+                    <div style={{
+                      position:'absolute', top:'3px',
+                      left: notifPrefs[n.key] ? '23px' : '3px',
+                      width:'18px', height:'18px', borderRadius:'50%',
+                      background:'#fff', transition:'left 0.2s'
+                    }} />
                   </div>
-                  <h3>Dark</h3>
-                  <p>Choose a dark interface</p>
                 </div>
-              </div>
-
-              {/* Additional Appearance Options */}
-              <div style={{
-                marginTop: '40px',
-                paddingTop: '30px',
-                borderTop: '1px solid var(--border-color)'
-              }}>
-                <h3 style={{ marginBottom: '20px' }}>Compact View</h3>
-                <div className="checkbox-group">
-                  <input type="checkbox" id="compact" defaultChecked={false} />
-                  <label htmlFor="compact">Enable compact sidebar</label>
-                </div>
-              </div>
+              ))}
+              <button onClick={handleSaveNotifications}
+                style={{ marginTop:'8px', display:'flex', alignItems:'center', gap:'8px',
+                         background:'var(--primary-color)', border:'none', borderRadius:'10px',
+                         padding:'10px 24px', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'14px' }}>
+                <Save size={15} /> Save Preferences
+              </button>
             </div>
           )}
 
-          {/* Notifications Tab */}
-          {activeTab === 'notifications' && (
-            <div className="settings-panel">
-              <h2 style={{ marginBottom: '20px' }}>Notification Preferences</h2>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{
-                  background: 'var(--glass-bg)',
-                  border: '1px solid var(--glass-border)',
-                  padding: '20px',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <div>
-                    <h3 style={{ marginBottom: '4px' }}>Email Notifications</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                      Receive updates via email
-                    </p>
+          {/* ── SECURITY ── */}
+          {activeTab === 'Security' && (
+            <form onSubmit={handleChangePassword}>
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Security Settings</h2>
+              <h3 style={{ fontSize:'15px', fontWeight:600, marginBottom:'16px' }}>Change Password</h3>
+              <div style={{ display:'flex', flexDirection:'column', gap:'14px', maxWidth:'400px' }}>
+                {[
+                  { label:'Current Password', name:'current_password' },
+                  { label:'New Password',      name:'new_password'     },
+                  { label:'Confirm Password',  name:'confirm_password' },
+                ].map(f => (
+                  <div key={f.name}>
+                    <label style={labelStyle}>{f.label}</label>
+                    <input type="password" value={passwords[f.name]}
+                      onChange={e => setPasswords(p => ({...p, [f.name]: e.target.value}))}
+                      placeholder="••••••••" style={inputStyle} required />
                   </div>
-                  <input
-                    type="checkbox"
-                    name="emailNotifications"
-                    checked={notifications.emailNotifications}
-                    onChange={handleNotificationChange}
-                  />
-                </div>
-
-                <div style={{
-                  background: 'var(--glass-bg)',
-                  border: '1px solid var(--glass-border)',
-                  padding: '20px',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <div>
-                    <h3 style={{ marginBottom: '4px' }}>Push Notifications</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                      Receive browser notifications
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    name="pushNotifications"
-                    checked={notifications.pushNotifications}
-                    onChange={handleNotificationChange}
-                  />
-                </div>
-
-                <div style={{
-                  background: 'var(--glass-bg)',
-                  border: '1px solid var(--glass-border)',
-                  padding: '20px',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <div>
-                    <h3 style={{ marginBottom: '4px' }}>Course Updates</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                      Updates from your enrolled courses
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    name="courseUpdates"
-                    checked={notifications.courseUpdates}
-                    onChange={handleNotificationChange}
-                  />
-                </div>
+                ))}
               </div>
-            </div>
-          )}
-
-          {/* Security Tab */}
-          {activeTab === 'security' && (
-            <div className="settings-panel">
-              <h2 style={{ marginBottom: '20px' }}>Security Settings</h2>
-
-              {/* Change Password */}
-              <div style={{ marginBottom: '30px', paddingBottom: '30px', borderBottom: '1px solid var(--border-color)' }}>
-                <h3 style={{ marginBottom: '20px' }}>Change Password</h3>
-                <div style={{ display: 'grid', gap: '15px', maxWidth: '400px' }}>
-                  <div className="form-group">
-                    <label>Current Password</label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>New Password</label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Confirm Password</label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  <button className="btn btn-primary">Update Password</button>
-                </div>
-              </div>
-
-              {/* Danger Zone */}
-              <div>
-                <h3 style={{ marginBottom: '20px', color: 'var(--danger-color)' }}>Danger Zone</h3>
-                <button className="btn btn-danger" onClick={handleLogout}>
-                  <LogOut size={16} />
-                  Logout from Account
-                </button>
-              </div>
-            </div>
+              <button type="submit" disabled={saving}
+                style={{ marginTop:'24px', display:'flex', alignItems:'center', gap:'8px',
+                         background:'var(--primary-color)', border:'none', borderRadius:'10px',
+                         padding:'10px 24px', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'14px' }}>
+                <Shield size={15} /> {saving ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
           )}
         </div>
       </div>
     </div>
   );
 }
-
-export default Settings;
