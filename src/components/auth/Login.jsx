@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, BookOpen, GraduationCap, BarChart2, Shield } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
@@ -15,17 +15,33 @@ function Login() {
   const navigate = useNavigate();
   const { login } = useContext(AppContext);
 
-  const [email,       setEmail]       = useState('');
-  const [password,    setPassword]    = useState('');
-  const [showPass,    setShowPass]    = useState(false);
-  const [error,       setError]       = useState('');
-  const [loading,     setLoading]     = useState(false);
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
+
+  // ← These must be at component level, NOT inside handleSubmit
+  const [liveStats, setLiveStats] = useState({
+    programs: 5, subjects: 21, students: '1,280', departments: 4
+  });
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/public/stats')
+      .then(r => r.json())
+      .then(data => setLiveStats({
+        programs:    data.programs    ?? 5,
+        subjects:    data.subjects    ?? 21,
+        students:    data.students?.toLocaleString() ?? '1,280',
+        departments: data.departments ?? 4,
+      }))
+      .catch(() => {}); // keep defaults on error
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const response = await fetch("http://127.0.0.1:8000/api/login", {
         method: "POST",
@@ -35,9 +51,7 @@ function Login() {
         },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await response.json();
-
       if (response.ok) {
         localStorage.setItem("token", data.token);
         login(data.user, data.token, data.user.role);
@@ -83,7 +97,12 @@ function Login() {
         </ul>
 
         <div className="auth-stats">
-          {[['5','Programs'],['21','Subjects'],['1,280','Students'],['4','Departments']].map(([num,lbl]) => (
+          {[
+            [liveStats.programs,    'Programs'],
+            [liveStats.subjects,    'Subjects'],
+            [liveStats.students,    'Students'],
+            [liveStats.departments, 'Departments'],
+          ].map(([num, lbl]) => (
             <div className="auth-stat-item" key={lbl}>
               <span className="auth-stat-num">{num}</span>
               <span className="auth-stat-label">{lbl}</span>
@@ -118,7 +137,6 @@ function Login() {
           )}
 
           <form onSubmit={handleSubmit}>
-
             {/* Email */}
             <div className="form-group">
               <label>Email Address</label>
@@ -154,7 +172,6 @@ function Login() {
                   style={{ paddingLeft: '42px', paddingRight: '42px' }}
                   required
                 />
-                {/* Eye toggle button */}
                 <button
                   type="button"
                   onClick={() => setShowPass(prev => !prev)}

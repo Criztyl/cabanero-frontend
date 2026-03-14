@@ -1,9 +1,9 @@
 import { useState, useMemo, useContext, useEffect } from 'react';
 import { Search, Plus, Pencil, Trash2 } from 'lucide-react';
-import { subjectsData } from '../../data/subjectsData';
 import { AppContext } from '../../context/AppContext';
 import ConfirmDialog from '../common/ConfirmDialog';
 import './SubjectList.css';
+import api from '../../services/api';
 
 const EMPTY_FORM = {
   code:'', title:'', units:'', program:'BSIT',
@@ -17,10 +17,30 @@ function SubjectList() {
   const { isAdminUser, myEnrollment, fetchMyEnrollment,
         subjects: ctxSubjects, setSubjects: setCtxSubjects } = useContext(AppContext);
 
-  const [localSubjects, setLocalSubjects] = useState(() => ctxSubjects ?? subjectsData);
-  useEffect(() => {
-    setCtxSubjects(localSubjects);
-  }, [localSubjects]);
+  const [localSubjects, setLocalSubjects] = useState([]);
+    const [loadingSubjects, setLoadingSubjects] = useState(true);
+
+    useEffect(() => {
+      api.get('/courses')
+        .then(res => {
+          // Map API course fields to match component's expected fields
+          const mapped = res.data.map(c => ({
+            id:          c.id,
+            code:        c.course_code,
+            title:       c.course_name,
+            units:       c.units,
+            program:     c.department,
+            semester:    c.semester     ?? 'First Semester',
+            term:        c.term         ?? 'Semester',
+            yearLevel:   c.year_level   ?? '1st Year',
+            description: c.description  ?? '',
+            prerequisites: [],
+          }));
+          setLocalSubjects(mapped);
+        })
+        .catch(() => {})
+        .finally(() => setLoadingSubjects(false));
+    }, []);
 
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [search,          setSearch]          = useState('');
@@ -82,31 +102,66 @@ function SubjectList() {
     });
     setEditMode(true); setFormError(''); setShowForm(true);
   };
-  const handleDelete = (e, s) => {
-    e.stopPropagation();
-    setConfirm({
-      title: `Delete "${s.code}"?`,
-      message: 'This subject will be permanently removed.',
-      onConfirm: () => {
-        setLocalSubjects(prev => prev.filter(x => x.id !== s.id));
-        if (selectedSubject?.id === s.id) setSelectedSubject(null);
-        setConfirm(null);
-      },
-    });
-  };
-  const handleSave = (e) => {
-    e.preventDefault(); setFormError(''); setSaving(true);
-    if (!form.code || !form.title) { setFormError('Code and title required.'); setSaving(false); return; }
-    setTimeout(() => {
-      const processed = {
-        ...form, units:Number(form.units),
-        prerequisites: form.prerequisites ? form.prerequisites.split(',').map(s=>s.trim()).filter(Boolean) : [],
+  const handleDelete = (e, subject) => {
+  e.stopPropagation();
+  setConfirm({
+    title: `Delete "${subject.code}"?`,
+    message: 'This subject will be permanently removed from the database.',
+    onConfirm: async () => {
+      try {
+        await api.delete(`/courses/${subject.id}`);
+        setLocalSubjects(prev => prev.filter(s => s.id !== subject.id));
+        if (selectedSubject?.id === subject.id) setSelectedSubject(null);
+      } catch { alert('Failed to delete.'); }
+      setConfirm(null);
+    },
+  });
+};
+  const handleSave = async (e) => {
+  e.preventDefault(); setFormError(''); setSaving(true);
+  if (!form.code || !form.title) {
+    setFormError('Code and title required.'); setSaving(false); return;
+  }
+  try {
+    if (editMode) {
+      const existing = localSubjects.find(s => s.code === form.code);
+      const res = await api.put(`/courses/${existing.id}`, {
+        course_name: form.title,
+        department:  form.program,
+        units:       Number(form.units),
+        description: form.description,
+      });
+      // Remap response
+      const mapped = {
+        id: res.data.id, code: res.data.course_code,
+        title: res.data.course_name, units: res.data.units,
+        program: res.data.department, semester: form.semester,
+        term: form.term, yearLevel: form.yearLevel,
+        description: res.data.description, prerequisites: [],
       };
-      if (editMode) setLocalSubjects(prev => prev.map(s => s.code===form.code ? {...s,...processed} : s));
-      else setLocalSubjects(prev => [{ id:Date.now(), ...processed }, ...prev]);
-      setShowForm(false); setSaving(false);
-    }, 400);
-  };
+      setLocalSubjects(prev => prev.map(s => s.id === mapped.id ? mapped : s));
+    } else {
+      const res = await api.post('/courses', {
+        course_code: form.code,
+        course_name: form.title,
+        department:  form.program,
+        units:       Number(form.units),
+        description: form.description,
+      });
+      const mapped = {
+        id: res.data.id, code: res.data.course_code,
+        title: res.data.course_name, units: res.data.units,
+        program: res.data.department, semester: form.semester,
+        term: form.term, yearLevel: form.yearLevel,
+        description: res.data.description, prerequisites: [],
+      };
+      setLocalSubjects(prev => [...prev, mapped]);
+    }
+    setShowForm(false);
+  } catch (err) {
+    setFormError(err.response?.data?.message || 'Failed to save subject.');
+  } finally { setSaving(false); }
+};
 
   const inputStyle = {
     width:'100%', background:'rgba(255,255,255,0.05)',

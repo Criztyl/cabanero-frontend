@@ -78,7 +78,7 @@ function AdminDashboard() {
                     flexWrap:'wrap', gap:'20px', marginBottom:'30px' }}>
         <div>
           <h1 style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, margin:0 }}>
-            Welcome, {currentUser?.name || 'Admin'}! 👋
+            Welcome, {currentUser?.name || 'Admin'}! 
           </h1>
           <p style={{ color:'var(--text-muted)', marginTop:'5px', fontSize:'14px' }}>
             Here's your academic overview for today
