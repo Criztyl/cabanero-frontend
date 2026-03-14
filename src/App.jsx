@@ -1,13 +1,15 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
-import Login from './pages/Login.jsx';
-import SignUp from './pages/SignUp.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import Settings from './components/Settings.jsx';
-import ProgramList from './components/ProgramList.jsx';
-import SubjectList from './components/SubjectList.jsx';
-import Sidebar from './components/Sidebar.jsx';
+import Login from './components/auth/Login.jsx';
+import SignUp from './components/auth/SignUp.jsx';
+import Dashboard from './components/dashboard/Dashboard.jsx';
+import Settings from './components/settings/Settings.jsx';
+import ProgramList from './components/programs/ProgramList.jsx';
+import SubjectList from './components/subjects/SubjectList.jsx';
+import Sidebar from './components/common/Sidebar.jsx';
 import './App.css';
+import { useContext } from 'react';
+import { AppContext } from './context/AppContext';
 
 /**
  * DASHBOARD LAYOUT
@@ -37,6 +39,13 @@ const DashboardLayout = () => (
   </div>
 );
 
+const ProtectedRoute = ({ children }) => {
+  const { currentUser, loading } = useContext(AppContext);
+  if (loading) return <div style={{ color:'#fff', padding:'40px' }}>Loading...</div>;
+  if (!currentUser) return <Navigate to="/login" replace />;
+  return children;
+};
+
 function App() {
   return (
     <AppProvider>
@@ -56,7 +65,7 @@ function App() {
           {/* --- PROTECTED ROUTES --- */}
           
           {/* Any path starting with /dashboard will use the DashboardLayout */}
-          <Route path="/dashboard/*" element={<DashboardLayout />} />
+          <Route path="/dashboard/*" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} />
 
           {/* --- GLOBAL FALLBACK --- */}
           <Route path="*" element={<Navigate to="/login" replace />} />

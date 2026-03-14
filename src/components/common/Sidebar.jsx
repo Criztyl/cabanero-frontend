@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { LayoutDashboard, BookOpen, Library, Settings, LogOut } from 'lucide-react';
-import { AppContext } from '../context/AppContext';
+import { AppContext } from '../../context/AppContext';
+
 
 const NAV_ITEMS = [
   { to: '/dashboard',          icon: LayoutDashboard, label: 'Overview'  },

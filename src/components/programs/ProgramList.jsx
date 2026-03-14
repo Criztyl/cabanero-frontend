@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
-import { programsData } from '../data/programsData';
+import { programsData } from '../../data/programsData';
 import './ProgramList.css';
 
 function ProgramList() {

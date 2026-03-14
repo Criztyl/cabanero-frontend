@@ -1,8 +1,8 @@
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, BookOpen, GraduationCap, BarChart2, Shield } from 'lucide-react';
-import { AppContext } from '../context/AppContext';
-import '../styles/global.css';
+import { AppContext } from '../../context/AppContext';
+import "../../styles/global.css";
 
 const FEATURES = [
   { icon: BookOpen,      text: 'Browse full curriculum across all degree programs' },

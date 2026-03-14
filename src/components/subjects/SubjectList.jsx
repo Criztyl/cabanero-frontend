@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
-import { subjectsData } from '../data/subjectsData';
+import { subjectsData } from '../../data/subjectsData';
 import './SubjectList.css';
 
 function SubjectList() {

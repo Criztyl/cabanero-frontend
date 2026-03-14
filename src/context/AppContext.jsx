@@ -1,81 +1,46 @@
-import React, { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from 'react';
 
-// This Context is like a mailbox that holds:
-// 1. User info (currentUser, isLoggedIn)
-// 2. Dark mode setting
-// 3. Functions to change these values
+export const AppContext = createContext(null);
 
-export const AppContext = createContext();
-
-export const AppProvider = ({ children }) => {
-  // User state - tracks who is logged in
+export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole,    setUserRole]    = useState(null);
+  const [loading,     setLoading]     = useState(true);
 
-  // Dark mode state
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
-  });
-
-  // Apply dark mode to HTML element
+  // Restore session on page refresh
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
+    const token     = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    const savedRole = localStorage.getItem('role');
+    if (token && savedUser) {
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+        setUserRole(savedRole);
+      } catch { localStorage.clear(); }
     }
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-  }, [darkMode]);
+    setLoading(false);
+  }, []);
 
-  // Login function
-  const login = (email, password, role = 'student') => {
-    // Mock login - in real app, this would connect to backend
-    const user = {
-      id: Math.random(),
-      email,
-      name: email.split('@')[0],
-      role, // 'student' or 'admin'
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-      department: 'IT Department'
-    };
-    setCurrentUser(user);
-    setIsLoggedIn(true);
+  // Called by Login.jsx AFTER it already fetched the token from Laravel
+  const login = (user, token, role) => {
+    localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('role', role || 'student');
+    setCurrentUser(user);
+    setUserRole(role || 'student');
   };
 
-  // Logout function
   const logout = () => {
-    setCurrentUser(null);
-    setIsLoggedIn(false);
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
-  };
-
-  // Update user profile
-  const updateUser = (updates) => {
-    const updatedUser = { ...currentUser, ...updates };
-    setCurrentUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-  };
-
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
+    localStorage.removeItem('role');
+    setCurrentUser(null);
+    setUserRole(null);
   };
 
   return (
-    <AppContext.Provider
-      value={{
-        currentUser,
-        isLoggedIn,
-        darkMode,
-        login,
-        logout,
-        updateUser,
-        toggleDarkMode
-      }}
-    >
+    <AppContext.Provider value={{ currentUser, userRole, loading, login, logout }}>
       {children}
     </AppContext.Provider>
   );
-};
+}

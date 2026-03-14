@@ -1,8 +1,8 @@
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User } from 'lucide-react';
-import { AppContext } from '../context/AppContext';
-import '../styles/global.css';
+import { AppContext } from '../../context/AppContext';
+import '../../styles/global.css';
 
 function SignUp() {
   const navigate = useNavigate();
@@ -20,20 +20,39 @@ function SignUp() {
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-    if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return; }
-    if (!formData.agreeTerms) { setError('You must agree to the terms'); return; }
-    setLoading(true);
-    setTimeout(() => {
-      if (formData.email && formData.password) {
-        login(formData.email, formData.password, 'student');
-        navigate('/dashboard');
-      }
-      setLoading(false);
-    }, 1000);
-  };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return; }
+  if (!formData.agreeTerms) { setError('You must agree to the terms'); return; }
+  setLoading(true);
+
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        name:     formData.fullName,
+        email:    formData.email,
+        password: formData.password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      localStorage.setItem('token', data.token);
+      login(data.user, data.token, 'student');
+      navigate('/dashboard');
+    } else {
+      setError(data.message || 'Registration failed.');
+    }
+  } catch (err) {
+    setError('Unable to connect to server. Is Laravel running?');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     /* Reuse the split layout — narrower left panel for signup */
