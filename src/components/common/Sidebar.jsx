@@ -2,23 +2,23 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useContext, useState } from 'react';
 import {
   LayoutDashboard, BookOpen, Library, Settings,
-  LogOut, Users, CalendarDays
+  LogOut, Users, CalendarDays, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
 
 function Sidebar() {
   const navigate = useNavigate();
-  const { logout, userRole, compactSidebar } = useContext(AppContext);
+  const { logout, userRole, compactSidebar, toggleCompact } = useContext(AppContext);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const isAdmin = userRole === 'admin';
 
   const NAV_ITEMS = [
-    { to: '/dashboard',            icon: LayoutDashboard, label: 'Overview',     all:   true  },
-    { to: '/dashboard/programs',   icon: BookOpen,        label: 'Programs',     all:   true  },
-    { to: '/dashboard/subjects',   icon: Library,         label: 'Subjects',     all:   true  },
-    { to: '/dashboard/students',   icon: Users,           label: 'Students',     admin: true  },
-    { to: '/dashboard/calendar',   icon: CalendarDays,    label: 'School Days',  all:   true  },
+    { to: '/dashboard',          icon: LayoutDashboard, label: 'Overview',    all:   true },
+    { to: '/dashboard/programs', icon: BookOpen,        label: 'Programs',    all:   true },
+    { to: '/dashboard/subjects', icon: Library,         label: 'Subjects',    all:   true },
+    { to: '/dashboard/students', icon: Users,           label: 'Students',    admin: true },
+    { to: '/dashboard/calendar', icon: CalendarDays,    label: 'School Days', all:   true },
   ];
 
   const visibleItems = NAV_ITEMS.filter(item => item.all || (item.admin && isAdmin));
@@ -35,16 +35,36 @@ function Sidebar() {
         transition: 'width 0.25s ease',
         overflow: 'hidden',
       }}>
-        {/* Logo */}
-        <div className="sidebar-logo" style={{
-          justifyContent: compactSidebar ? 'center' : 'flex-start',
-          fontSize: compactSidebar ? '1rem' : undefined,
-          letterSpacing: compactSidebar ? '0' : undefined,
-        }}>
-          {compactSidebar ? 'S' : 'STRUCTURA'}
+
+        {/* ── Logo — click to toggle compact ── */}
+        <div
+          className="sidebar-logo"
+          onClick={toggleCompact}
+          title={compactSidebar ? 'Expand sidebar' : 'Collapse sidebar'}
+          style={{
+            justifyContent: compactSidebar ? 'center' : 'space-between',
+            cursor: 'pointer',
+            userSelect: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <span style={{
+            fontSize: compactSidebar ? '1rem' : undefined,
+            letterSpacing: compactSidebar ? '0' : undefined,
+          }}>
+            {compactSidebar ? 'S' : 'STRUCTURA'}
+          </span>
+          {!compactSidebar && (
+            <PanelLeftClose size={15} style={{ opacity: 0.5, flexShrink: 0 }} />
+          )}
+          {compactSidebar && (
+            <PanelLeftOpen size={15} style={{ opacity: 0.5, flexShrink: 0 }} />
+          )}
         </div>
 
-        {/* Role Badge */}
+        {/* ── Role Badge ── */}
         {!compactSidebar && (
           <div style={{
             marginBottom: '16px', marginTop: '-16px',
@@ -65,8 +85,8 @@ function Sidebar() {
           </div>
         )}
 
-        {/* Nav */}
-        <nav className="nav-list">
+        {/* ── Nav Links ── */}
+        <nav className="nav-list" style={{ flex: 1 }}>
           {visibleItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
@@ -82,7 +102,7 @@ function Sidebar() {
           ))}
         </nav>
 
-        {/* Footer */}
+        {/* ── Footer: Settings → divider → Logout ── */}
         <div className="sidebar-footer">
           <NavLink
             to="/dashboard/settings"
@@ -93,6 +113,13 @@ function Sidebar() {
             <Settings size={18} style={{ flexShrink: 0 }} />
             {!compactSidebar && 'Settings'}
           </NavLink>
+
+          {/* Divider */}
+          <div style={{
+            height: '1px',
+            background: 'var(--glass-border)',
+            margin: '8px 0',
+          }} />
 
           <button
             className="sidebar-logout-btn"
@@ -106,7 +133,7 @@ function Sidebar() {
         </div>
       </aside>
 
-      {/* Logout Confirmation Modal */}
+      {/* ── Logout Confirmation Modal ── */}
       {showConfirm && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -128,7 +155,7 @@ function Sidebar() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 16px',
             }}>
-              <LogOut size={24} color="var(--danger-color)" />
+              <LogOut size={24} color="var(--danger-color, #ff4466)" />
             </div>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '8px' }}>
               Sign Out?

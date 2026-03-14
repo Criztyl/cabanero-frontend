@@ -1,18 +1,23 @@
 import { useState, useContext } from 'react';
-import { User, Moon, Sun, Bell, Shield, Save, Check } from 'lucide-react';
+import { User, Moon, Bell, Shield, Save, Check } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
 import api from '../../services/api';
 
 const TAB_ICONS = { Profile: User, Appearance: Moon, Notifications: Bell, Security: Shield };
 
 export default function Settings() {
-  const { currentUser, setCurrentUser, theme, toggleTheme,
-          compactSidebar, toggleCompact, notifications, updateNotifications } = useContext(AppContext);
+  // ← use the correct names from AppContext
+  const {
+    currentUser, setCurrentUser,
+    darkMode, toggleDarkMode,
+    compactSidebar, toggleCompact,
+    notifications, saveNotifications,
+  } = useContext(AppContext);
 
-  const [activeTab,   setActiveTab]   = useState('Profile');
-  const [saved,       setSaved]       = useState('');
-  const [error,       setError]       = useState('');
-  const [saving,      setSaving]      = useState(false);
+  const [activeTab, setActiveTab] = useState('Profile');
+  const [saved,     setSaved]     = useState('');
+  const [error,     setError]     = useState('');
+  const [saving,    setSaving]    = useState(false);
 
   const [profile, setProfile] = useState({
     name:       currentUser?.name       || '',
@@ -22,13 +27,13 @@ export default function Settings() {
   });
 
   const [passwords, setPasswords] = useState({
-    current_password:'', new_password:'', confirm_password:''
+    current_password: '', new_password: '', confirm_password: ''
   });
 
   const [notifPrefs, setNotifPrefs] = useState({
-    email:   notifications?.email   ?? true,
-    push:    notifications?.push    ?? true,
-    courses: notifications?.courses ?? true,
+    emailNotifications: notifications?.emailNotifications ?? true,
+    pushNotifications:  notifications?.pushNotifications  ?? true,
+    courseUpdates:      notifications?.courseUpdates       ?? true,
   });
 
   const showSaved = (msg = 'Changes saved!') => {
@@ -38,9 +43,10 @@ export default function Settings() {
   const handleSaveProfile = async (e) => {
     e.preventDefault(); setError(''); setSaving(true);
     try {
-      const res = await api.put('/profile', profile);
-      setCurrentUser(res.data.user);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      // ← correct route: /user/profile
+      const res = await api.put('/user/profile', profile);
+      setCurrentUser(res.data);
+      localStorage.setItem('user', JSON.stringify(res.data));
       showSaved('Profile updated!');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save profile.');
@@ -53,9 +59,11 @@ export default function Settings() {
       setError('New passwords do not match.'); setSaving(false); return;
     }
     try {
-      await api.put('/change-password', {
-        current_password: passwords.current_password,
-        new_password:     passwords.new_password,
+      // ← correct route: POST /user/password with new_password_confirmation
+      await api.post('/user/password', {
+        current_password:      passwords.current_password,
+        new_password:          passwords.new_password,
+        new_password_confirmation: passwords.confirm_password,
       });
       setPasswords({ current_password:'', new_password:'', confirm_password:'' });
       showSaved('Password changed!');
@@ -65,8 +73,8 @@ export default function Settings() {
   };
 
   const handleSaveNotifications = () => {
-    updateNotifications(notifPrefs);
-    showSaved('Notification preferences saved!');
+    saveNotifications(notifPrefs); // ← correct: saveNotifications not updateNotifications
+    showSaved('Preferences saved!');
   };
 
   const inputStyle = {
@@ -80,6 +88,20 @@ export default function Settings() {
     marginBottom:'6px', textTransform:'uppercase', letterSpacing:'0.5px'
   };
 
+  const Toggle = ({ on, onToggle }) => (
+    <div onClick={onToggle} style={{
+      width:'44px', height:'24px', borderRadius:'12px', position:'relative',
+      background: on ? 'var(--primary-color)' : 'rgba(255,255,255,0.15)',
+      transition:'background 0.2s', cursor:'pointer', flexShrink:0
+    }}>
+      <div style={{
+        position:'absolute', top:'3px', left: on ? '23px' : '3px',
+        width:'18px', height:'18px', borderRadius:'50%',
+        background:'#fff', transition:'left 0.2s'
+      }} />
+    </div>
+  );
+
   return (
     <div className="dashboard-wrapper-inner">
       <div style={{ marginBottom:'28px' }}>
@@ -90,10 +112,11 @@ export default function Settings() {
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', gap:'20px' }}>
-        {/* Sidebar tabs */}
+        {/* Tab sidebar */}
         <div className="program-card" style={{ padding:'12px', height:'fit-content' }}>
           {Object.entries(TAB_ICONS).map(([tab, Icon]) => (
-            <button key={tab} onClick={() => { setActiveTab(tab); setError(''); setSaved(''); }}
+            <button key={tab}
+              onClick={() => { setActiveTab(tab); setError(''); setSaved(''); }}
               style={{
                 display:'flex', alignItems:'center', gap:'12px', width:'100%',
                 padding:'10px 14px', borderRadius:'10px', border:'none',
@@ -109,12 +132,13 @@ export default function Settings() {
           ))}
         </div>
 
-        {/* Content */}
+        {/* Content panel */}
         <div className="program-card" style={{ cursor:'default' }}>
           {saved && (
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(0,255,133,0.1)',
-                          border:'1px solid rgba(0,255,133,0.2)', borderRadius:'10px',
-                          padding:'10px 14px', marginBottom:'20px', color:'#00ff85', fontSize:'14px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px',
+                          background:'rgba(0,255,133,0.1)', border:'1px solid rgba(0,255,133,0.2)',
+                          borderRadius:'10px', padding:'10px 14px', marginBottom:'20px',
+                          color:'#00ff85', fontSize:'14px' }}>
               <Check size={16} /> {saved}
             </div>
           )}
@@ -129,12 +153,14 @@ export default function Settings() {
           {/* ── PROFILE ── */}
           {activeTab === 'Profile' && (
             <form onSubmit={handleSaveProfile}>
-              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Profile Information</h2>
-              {/* Avatar */}
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>
+                Profile Information
+              </h2>
               <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'24px' }}>
                 <div style={{ width:'64px', height:'64px', borderRadius:'50%',
-                              background:'var(--primary-color)', display:'flex', alignItems:'center',
-                              justifyContent:'center', fontSize:'24px', fontWeight:700, flexShrink:0 }}>
+                              background:'var(--primary-color)', display:'flex',
+                              alignItems:'center', justifyContent:'center',
+                              fontSize:'24px', fontWeight:700, flexShrink:0 }}>
                   {currentUser?.name?.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -144,13 +170,12 @@ export default function Settings() {
                   </p>
                 </div>
               </div>
-
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
                 {[
-                  { label:'Full Name',   name:'name',       type:'text'  },
-                  { label:'Email',       name:'email',      type:'email' },
-                  { label:'Department',  name:'department', type:'text'  },
-                  { label:'Phone',       name:'phone',      type:'text'  },
+                  { label:'Full Name',  name:'name',       type:'text'  },
+                  { label:'Email',      name:'email',      type:'email' },
+                  { label:'Department', name:'department', type:'text'  },
+                  { label:'Phone',      name:'phone',      type:'text'  },
                 ].map(f => (
                   <div key={f.name}>
                     <label style={labelStyle}>{f.label}</label>
@@ -160,11 +185,11 @@ export default function Settings() {
                   </div>
                 ))}
               </div>
-
               <button type="submit" disabled={saving}
                 style={{ marginTop:'24px', display:'flex', alignItems:'center', gap:'8px',
                          background:'var(--primary-color)', border:'none', borderRadius:'10px',
-                         padding:'10px 24px', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'14px' }}>
+                         padding:'10px 24px', color:'#fff', fontWeight:600,
+                         cursor:'pointer', fontSize:'14px' }}>
                 <Save size={15} /> {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
@@ -173,17 +198,22 @@ export default function Settings() {
           {/* ── APPEARANCE ── */}
           {activeTab === 'Appearance' && (
             <div>
-              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Appearance Settings</h2>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'24px' }}>
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>
+                Appearance Settings
+              </h2>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr',
+                            gap:'16px', marginBottom:'24px' }}>
                 {[
-                  { label:'Light', value:'light', icon:'☀️', desc:'Choose a light interface' },
-                  { label:'Dark',  value:'dark',  icon:'🌙', desc:'Choose a dark interface'  },
+                  { label:'Light', value:'light', icon:'☀️', desc:'Light interface' },
+                  { label:'Dark',  value:'dark',  icon:'🌙', desc:'Dark interface'  },
                 ].map(t => (
-                  <div key={t.value} onClick={toggleTheme}
+                  <div key={t.value} onClick={toggleDarkMode}  // ← toggleDarkMode not toggleTheme
                     style={{
-                      border:`2px solid ${theme===t.value ? 'var(--primary-color)' : 'var(--glass-border)'}`,
+                      border:`2px solid ${(!darkMode && t.value==='light') || (darkMode && t.value==='dark')
+                        ? 'var(--primary-color)' : 'var(--glass-border)'}`,
                       borderRadius:'12px', padding:'24px', cursor:'pointer', textAlign:'center',
-                      background: theme===t.value ? 'rgba(255,0,85,0.08)' : 'transparent',
+                      background: (!darkMode && t.value==='light') || (darkMode && t.value==='dark')
+                        ? 'rgba(255,0,85,0.08)' : 'transparent',
                       transition:'all 0.2s'
                     }}>
                     <div style={{ fontSize:'32px', marginBottom:'12px' }}>{t.icon}</div>
@@ -192,22 +222,17 @@ export default function Settings() {
                   </div>
                 ))}
               </div>
+
               <div style={{ borderTop:'1px solid var(--glass-border)', paddingTop:'20px' }}>
-                <h3 style={{ fontSize:'15px', fontWeight:600, marginBottom:'14px' }}>Compact View</h3>
+                <h3 style={{ fontSize:'15px', fontWeight:600, marginBottom:'6px' }}>
+                  Compact Sidebar
+                </h3>
+                <p style={{ fontSize:'12px', color:'var(--text-muted)', marginBottom:'16px' }}>
+                  💡 Tip: You can also click the <strong>STRUCTURA</strong> logo in the sidebar
+                  to quickly toggle compact mode without coming to Settings.
+                </p>
                 <label style={{ display:'flex', alignItems:'center', gap:'12px', cursor:'pointer' }}>
-                  <div onClick={toggleCompact}
-                    style={{
-                      width:'44px', height:'24px', borderRadius:'12px', position:'relative',
-                      background: compactSidebar ? 'var(--primary-color)' : 'rgba(255,255,255,0.15)',
-                      transition:'background 0.2s', cursor:'pointer', flexShrink:0
-                    }}>
-                    <div style={{
-                      position:'absolute', top:'3px',
-                      left: compactSidebar ? '23px' : '3px',
-                      width:'18px', height:'18px', borderRadius:'50%',
-                      background:'#fff', transition:'left 0.2s'
-                    }} />
-                  </div>
+                  <Toggle on={compactSidebar} onToggle={toggleCompact} />
                   <div>
                     <p style={{ fontSize:'14px', fontWeight:500 }}>Enable compact sidebar</p>
                     <p style={{ fontSize:'12px', color:'var(--text-muted)' }}>
@@ -222,39 +247,34 @@ export default function Settings() {
           {/* ── NOTIFICATIONS ── */}
           {activeTab === 'Notifications' && (
             <div>
-              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Notification Preferences</h2>
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>
+                Notification Preferences
+              </h2>
               {[
-                { key:'email',   label:'Email Notifications',  desc:'Receive updates via email'              },
-                { key:'push',    label:'Push Notifications',    desc:'Receive browser notifications'          },
-                { key:'courses', label:'Course Updates',        desc:'Updates from your enrolled courses'     },
+                { key:'emailNotifications', label:'Email Notifications', desc:'Receive updates via email'          },
+                { key:'pushNotifications',  label:'Push Notifications',  desc:'Receive browser notifications'     },
+                { key:'courseUpdates',      label:'Course Updates',       desc:'Updates from your enrolled courses'},
               ].map(n => (
-                <div key={n.key}
-                  style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-                           padding:'16px', borderRadius:'12px', border:'1px solid var(--glass-border)',
-                           marginBottom:'12px' }}>
+                <div key={n.key} style={{
+                  display:'flex', justifyContent:'space-between', alignItems:'center',
+                  padding:'16px', borderRadius:'12px', border:'1px solid var(--glass-border)',
+                  marginBottom:'12px'
+                }}>
                   <div>
                     <p style={{ fontSize:'14px', fontWeight:500 }}>{n.label}</p>
                     <p style={{ fontSize:'12px', color:'var(--text-muted)', marginTop:'2px' }}>{n.desc}</p>
                   </div>
-                  <div onClick={() => setNotifPrefs(p => ({...p, [n.key]: !p[n.key]}))}
-                    style={{
-                      width:'44px', height:'24px', borderRadius:'12px', position:'relative',
-                      background: notifPrefs[n.key] ? 'var(--primary-color)' : 'rgba(255,255,255,0.15)',
-                      transition:'background 0.2s', cursor:'pointer', flexShrink:0
-                    }}>
-                    <div style={{
-                      position:'absolute', top:'3px',
-                      left: notifPrefs[n.key] ? '23px' : '3px',
-                      width:'18px', height:'18px', borderRadius:'50%',
-                      background:'#fff', transition:'left 0.2s'
-                    }} />
-                  </div>
+                  <Toggle
+                    on={notifPrefs[n.key]}
+                    onToggle={() => setNotifPrefs(p => ({...p, [n.key]: !p[n.key]}))}
+                  />
                 </div>
               ))}
               <button onClick={handleSaveNotifications}
                 style={{ marginTop:'8px', display:'flex', alignItems:'center', gap:'8px',
                          background:'var(--primary-color)', border:'none', borderRadius:'10px',
-                         padding:'10px 24px', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'14px' }}>
+                         padding:'10px 24px', color:'#fff', fontWeight:600,
+                         cursor:'pointer', fontSize:'14px' }}>
                 <Save size={15} /> Save Preferences
               </button>
             </div>
@@ -263,8 +283,12 @@ export default function Settings() {
           {/* ── SECURITY ── */}
           {activeTab === 'Security' && (
             <form onSubmit={handleChangePassword}>
-              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>Security Settings</h2>
-              <h3 style={{ fontSize:'15px', fontWeight:600, marginBottom:'16px' }}>Change Password</h3>
+              <h2 style={{ fontSize:'18px', fontWeight:700, marginBottom:'24px' }}>
+                Security Settings
+              </h2>
+              <h3 style={{ fontSize:'15px', fontWeight:600, marginBottom:'16px' }}>
+                Change Password
+              </h3>
               <div style={{ display:'flex', flexDirection:'column', gap:'14px', maxWidth:'400px' }}>
                 {[
                   { label:'Current Password', name:'current_password' },
@@ -282,7 +306,8 @@ export default function Settings() {
               <button type="submit" disabled={saving}
                 style={{ marginTop:'24px', display:'flex', alignItems:'center', gap:'8px',
                          background:'var(--primary-color)', border:'none', borderRadius:'10px',
-                         padding:'10px 24px', color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'14px' }}>
+                         padding:'10px 24px', color:'#fff', fontWeight:600,
+                         cursor:'pointer', fontSize:'14px' }}>
                 <Shield size={15} /> {saving ? 'Updating...' : 'Update Password'}
               </button>
             </form>

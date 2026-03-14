@@ -1,25 +1,25 @@
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, BookOpen, GraduationCap, BarChart2, Shield } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, BookOpen, GraduationCap, BarChart2, Shield } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
 import "../../styles/global.css";
 
 const FEATURES = [
   { icon: BookOpen,      text: 'Browse full curriculum across all degree programs' },
-  { icon: GraduationCap, text: 'Manage enrollment for 1,280+ active students'       },
-  { icon: BarChart2,     text: 'Real-time analytics and academic performance data'  },
-  { icon: Shield,        text: 'Secure, role-based access for staff and students'   },
+  { icon: GraduationCap, text: 'Manage enrollment for 1,280+ active students'      },
+  { icon: BarChart2,     text: 'Real-time analytics and academic performance data' },
+  { icon: Shield,        text: 'Secure, role-based access for staff and students'  },
 ];
 
 function Login() {
   const navigate = useNavigate();
   const { login } = useContext(AppContext);
-  
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [error,    setError]    = useState('');
-  const [role,     setRole]     = useState('student');
-  const [loading,  setLoading]  = useState(false);
+
+  const [email,       setEmail]       = useState('');
+  const [password,    setPassword]    = useState('');
+  const [showPass,    setShowPass]    = useState(false);
+  const [error,       setError]       = useState('');
+  const [loading,     setLoading]     = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,12 +27,11 @@ function Login() {
     setLoading(true);
 
     try {
-      // 1. Send request to the Laravel API
       const response = await fetch("http://127.0.0.1:8000/api/login", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json" 
+          "Accept": "application/json"
         },
         body: JSON.stringify({ email, password }),
       });
@@ -40,19 +39,10 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // 2. Save the token to local storage
         localStorage.setItem("token", data.token);
-        
-        // 3. Update Global Context and Navigate
-        if (login) {
-          login(data.user, data.token, role); 
-          navigate('/dashboard');
-        } else {
-          console.error("Login function not found in AppContext");
-          setError("System Error: Auth context not initialized.");
-        }
+        login(data.user, data.token, data.user.role);
+        navigate('/dashboard');
       } else {
-        // Handle "Invalid credentials" from Laravel AuthController
         setError(data.message || "Invalid credentials. Please try again.");
       }
     } catch (err) {
@@ -114,15 +104,12 @@ function Login() {
             </p>
           </div>
 
-          {/* ERROR DISPLAY BLOCK (CRUCIAL ADDITION) */}
           {error && (
-            <div style={{ 
-              color: '#ff4d4d', 
-              backgroundColor: 'rgba(255, 77, 77, 0.1)', 
-              padding: '12px', 
-              borderRadius: '8px', 
-              fontSize: '0.85rem', 
-              marginBottom: '20px',
+            <div style={{
+              color: '#ff4d4d',
+              backgroundColor: 'rgba(255, 77, 77, 0.1)',
+              padding: '12px', borderRadius: '8px',
+              fontSize: '0.85rem', marginBottom: '20px',
               border: '1px solid rgba(255, 77, 77, 0.2)',
               textAlign: 'center'
             }}>
@@ -131,14 +118,8 @@ function Login() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Sign in as</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="student">Student</option>
-                <option value="admin">Administrator</option>
-              </select>
-            </div>
 
+            {/* Email */}
             <div className="form-group">
               <label>Email Address</label>
               <div style={{ position: 'relative' }}>
@@ -148,7 +129,7 @@ function Login() {
                 }} />
                 <input
                   type="email"
-                  placeholder="you@structura.edu"
+                  placeholder="you@school.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{ paddingLeft: '42px' }}
@@ -157,6 +138,7 @@ function Login() {
               </div>
             </div>
 
+            {/* Password with eye toggle */}
             <div className="form-group">
               <label>Password</label>
               <div style={{ position: 'relative' }}>
@@ -165,13 +147,29 @@ function Login() {
                   transform: 'translateY(-50%)', color: '#71717a', pointerEvents: 'none'
                 }} />
                 <input
-                  type="password"
+                  type={showPass ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: '42px' }}
+                  style={{ paddingLeft: '42px', paddingRight: '42px' }}
                   required
                 />
+                {/* Eye toggle button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPass(prev => !prev)}
+                  style={{
+                    position: 'absolute', right: '14px', top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent', border: 'none',
+                    color: '#71717a', cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center',
+                  }}
+                  tabIndex={-1}
+                  aria-label={showPass ? 'Hide password' : 'Show password'}
+                >
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
               </div>
             </div>
 
