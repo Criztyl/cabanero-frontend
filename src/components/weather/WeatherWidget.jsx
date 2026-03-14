@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Droplets, Wind, Eye } from 'lucide-react';
-import { fetchCurrentWeather, fetchForecast } from '../../services/weatherApi';
+import { fetchCurrentWeather, fetchForecast } from '../../services/weatherApi.js';
 import ForecastDisplay from './ForecastDisplay';
 import LoadingSpinner  from '../common/LoadingSpinner';
 

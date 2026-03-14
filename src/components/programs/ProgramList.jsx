@@ -1,138 +1,238 @@
-import { useState, useMemo, useContext } from 'react';
-import { Search, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { useState, useMemo, useContext, useEffect } from 'react';
+import { Search, Plus, Pencil, Trash2 } from 'lucide-react';
 import { programsData } from '../../data/programsData';
 import { AppContext } from '../../context/AppContext';
-import api from '../../services/api';
+import ConfirmDialog from '../common/ConfirmDialog';
 import './ProgramList.css';
 
 const EMPTY_FORM = {
-  code: '', name: '', type: 'Bachelor', status: 'active',
-  duration: '4 years', totalUnits: '', description: '',
+  code:'', name:'', type:'Bachelor', status:'active',
+  duration:'4 years', totalUnits:'', description:'',
 };
 
 function ProgramList() {
-  const { isAdminUser, enrollInProgram, myEnrollment } = useContext(AppContext);
+  const { isAdminUser, requestEnrollment, fetchMyEnrollment, myEnrollment,
+        programs: ctxPrograms, setPrograms: setCtxPrograms } = useContext(AppContext);
 
-  const [localPrograms, setLocalPrograms] = useState(programsData);
-  const [selectedProgram, setSelectedProgram] = useState(null);
-  const [search, setSearch]   = useState('');
-  const [filter, setFilter]   = useState('all');
-
-  // Add/Edit modal
+  const [localPrograms, setLocalPrograms] = useState(() => ctxPrograms ?? programsData);
+  useEffect(() => {
+    setCtxPrograms(localPrograms);
+  }, [localPrograms]);
+  
+  const [selected,  setSelected]  = useState(null);
+  const [search,    setSearch]    = useState('');
+  const [filter,    setFilter]    = useState('all');
   const [showForm,  setShowForm]  = useState(false);
   const [editMode,  setEditMode]  = useState(false);
   const [form,      setForm]      = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [saving,    setSaving]    = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [reqMsg,    setReqMsg]    = useState('');
+  const [confirm,   setConfirm]   = useState(null);
+  const [enrollStatus, setEnrollStatus] = useState('none');
+  const [enrolledCode, setEnrolledCode] = useState(null);
 
-  // Enroll state
-  const [enrolling,    setEnrolling]    = useState(false);
-  const [enrollSuccess, setEnrollSuccess] = useState('');
+  useEffect(() => {
+    if (myEnrollment) {
+      setEnrollStatus(myEnrollment.status ?? 'none');
+      setEnrolledCode(myEnrollment.enrollment?.program_code ?? null);
+    }
+    // Refresh enrollment status
+    fetchMyEnrollment().then(d => {
+      if (d) { setEnrollStatus(d.status ?? 'none'); setEnrolledCode(d.enrollment?.program_code ?? null); }
+    });
+  }, []);
 
-  const filteredPrograms = useMemo(() => {
+  const enrolledProgram = localPrograms.find(p => p.code === enrolledCode);
+  const otherPrograms = useMemo(() => {
     return localPrograms.filter(p => {
+      if (p.code === enrolledCode) return false;
       const matchStatus = filter === 'all' || p.status === filter;
       const q = search.toLowerCase();
       const matchSearch = !q ||
         p.code?.toLowerCase().includes(q) ||
         p.name?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q) ||
-        p.type?.toLowerCase().includes(q);
+        p.description?.toLowerCase().includes(q);
       return matchStatus && matchSearch;
     });
-  }, [localPrograms, filter, search]);
+  }, [localPrograms, filter, search, enrolledCode]);
 
-  const openAdd = () => {
-    setForm(EMPTY_FORM); setEditMode(false);
-    setFormError(''); setShowForm(true);
-  };
-
-  const openEdit = (e, program) => {
+  const openAdd = () => { setForm(EMPTY_FORM); setEditMode(false); setFormError(''); setShowForm(true); };
+  const openEdit = (e, p) => {
     e.stopPropagation();
-    setForm({
-      code: program.code, name: program.name || '',
-      type: program.type || 'Bachelor', status: program.status || 'active',
-      duration: program.duration || '4 years',
-      totalUnits: program.totalUnits || '',
-      description: program.description || '',
-    });
+    setForm({ code:p.code, name:p.name||'', type:p.type||'Bachelor',
+              status:p.status||'active', duration:p.duration||'4 years',
+              totalUnits:p.totalUnits||'', description:p.description||'' });
     setEditMode(true); setFormError(''); setShowForm(true);
   };
 
-  const handleDelete = (e, program) => {
+  const handleDelete = (e, p) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete program "${program.code}"? This cannot be undone.`)) return;
-    setLocalPrograms(prev => prev.filter(p => p.id !== program.id));
-    if (selectedProgram?.id === program.id) setSelectedProgram(null);
+    setConfirm({
+      title: `Delete "${p.code}"?`,
+      message: 'This program will be permanently removed.',
+      onConfirm: () => {
+        setLocalPrograms(prev => prev.filter(x => x.id !== p.id));
+        if (selected?.id === p.id) setSelected(null);
+        setConfirm(null);
+      },
+    });
   };
 
-  const handleSaveForm = (e) => {
-    e.preventDefault();
-    setFormError(''); setSaving(true);
-    if (!form.code || !form.name) { setFormError('Code and name are required.'); setSaving(false); return; }
-
+  const handleSave = (e) => {
+    e.preventDefault(); setFormError(''); setSaving(true);
+    if (!form.code || !form.name) { setFormError('Code and name required.'); setSaving(false); return; }
     setTimeout(() => {
       if (editMode) {
         setLocalPrograms(prev => prev.map(p =>
-          p.code === form.code ? { ...p, ...form, totalUnits: Number(form.totalUnits) } : p
+          p.code===form.code ? {...p,...form, totalUnits:Number(form.totalUnits)} : p
         ));
       } else {
-        const newProgram = {
-          id: Date.now(), ...form,
-          totalUnits: Number(form.totalUnits),
-          yearLevels: [],
-        };
-        setLocalPrograms(prev => [newProgram, ...prev]);
+        setLocalPrograms(prev => [{id:Date.now(),...form, totalUnits:Number(form.totalUnits), yearLevels:[]}, ...prev]);
       }
       setShowForm(false); setSaving(false);
     }, 400);
   };
 
-  const handleEnroll = async (program) => {
-    setEnrolling(true); setEnrollSuccess('');
-    try {
-      await enrollInProgram(program.code, program.name || program.code);
-      setEnrollSuccess(`Successfully enrolled in ${program.code}!`);
-      setTimeout(() => setEnrollSuccess(''), 3000);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Enrollment failed.');
-    } finally { setEnrolling(false); }
+  const handleEnrollRequest = async (program) => {
+    setConfirm({
+      icon: '📋', danger: false,
+      title: `Request Enrollment in ${program.code}?`,
+      message: `You'll be enrolled in "${program.name}" pending admin approval.`,
+      confirmLabel: 'Submit Request', cancelLabel: 'Cancel',
+      onConfirm: async () => {
+        setConfirm(null); setRequesting(true); setReqMsg('');
+        try {
+          await requestEnrollment(program.code, program.name || program.code);
+          setEnrollStatus('pending');
+          setReqMsg(`✅ Enrollment request for ${program.code} submitted! Awaiting admin approval.`);
+          setSelected(null);
+        } catch (err) {
+          setReqMsg('❌ ' + (err.response?.data?.message || 'Request failed.'));
+        } finally { setRequesting(false); }
+      },
+    });
   };
 
-  const isEnrolled = (program) => myEnrollment?.program?.program_code === program.code;
+  const inputStyle = {
+    width:'100%', background:'rgba(255,255,255,0.05)',
+    border:'1px solid var(--glass-border)', borderRadius:'10px',
+    padding:'10px 14px', color:'#fff', fontSize:'14px',
+    outline:'none', boxSizing:'border-box',
+  };
 
   return (
     <div className="program-list-container">
 
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between',
-                    alignItems:'center', flexWrap:'wrap', gap:'16px', marginBottom:'28px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                    flexWrap:'wrap', gap:'16px', marginBottom:'28px' }}>
         <div>
-          <h1 className="page-title">Program Offerings</h1>
+          <h1 className="page-title">
+            {!isAdminUser && enrollStatus === 'approved' ? 'My Enrolled Program' : 'Program Offerings'}
+          </h1>
           <p style={{ color:'var(--text-muted)', fontSize:'13px', marginTop:'6px' }}>
             Browse all available degree programs
           </p>
         </div>
         {isAdminUser && (
           <button onClick={openAdd}
-            style={{ display:'flex', alignItems:'center', gap:'8px',
-                     background:'var(--primary-color)', border:'none',
-                     borderRadius:'10px', padding:'10px 18px',
+            style={{ display:'flex', alignItems:'center', gap:'8px', background:'var(--primary-color)',
+                     border:'none', borderRadius:'10px', padding:'10px 18px',
                      color:'#fff', fontWeight:600, cursor:'pointer', fontSize:'14px' }}>
             <Plus size={16} /> Add Program
           </button>
         )}
       </div>
 
-      {enrollSuccess && (
-        <div style={{ background:'rgba(0,255,133,0.1)', border:'1px solid rgba(0,255,133,0.3)',
+      {reqMsg && (
+        <div style={{ background: reqMsg.startsWith('✅') ? 'rgba(0,255,133,0.1)' : 'rgba(255,68,102,0.1)',
+                      border: `1px solid ${reqMsg.startsWith('✅') ? 'rgba(0,255,133,0.3)' : 'rgba(255,68,102,0.3)'}`,
                       borderRadius:'10px', padding:'12px 16px', marginBottom:'16px',
-                      color:'#00ff85', fontSize:'14px' }}>
-          ✅ {enrollSuccess}
+                      color: reqMsg.startsWith('✅') ? '#00ff85' : '#ff4466', fontSize:'14px' }}>
+          {reqMsg}
         </div>
       )}
 
-      {/* Controls */}
+      {/* Enrollment status banner (student only) */}
+      {!isAdminUser && enrollStatus === 'pending' && (
+        <div style={{ background:'rgba(255,170,0,0.1)', border:'1px solid rgba(255,170,0,0.3)',
+                      borderRadius:'12px', padding:'14px 18px', marginBottom:'20px',
+                      display:'flex', alignItems:'center', gap:'12px' }}>
+          <span style={{ fontSize:'20px' }}>⏳</span>
+          <div>
+            <p style={{ fontWeight:600, color:'#ffaa00', fontSize:'14px' }}>Enrollment Request Pending</p>
+            <p style={{ color:'var(--text-muted)', fontSize:'12px' }}>
+              Awaiting admin approval. You'll be notified once reviewed.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ENROLLED PROGRAM CARD (student view, after approval) */}
+      {!isAdminUser && enrollStatus === 'approved' && enrolledProgram && (
+        <>
+          <div className="program-card" style={{ border:'2px solid rgba(0,255,133,0.4)',
+                                                  background:'rgba(0,255,133,0.05)', cursor:'default',
+                                                  marginBottom:'8px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'14px' }}>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'4px' }}>
+                  <h3 className="card-title">{enrolledProgram.code}</h3>
+                  <span style={{ background:'rgba(0,255,133,0.2)', color:'#00ff85',
+                                 fontSize:'11px', fontWeight:700, padding:'2px 10px',
+                                 borderRadius:'20px', textTransform:'uppercase' }}>
+                    ✅ Enrolled
+                  </span>
+                </div>
+                <p className="card-subtitle">{enrolledProgram.name}</p>
+              </div>
+            </div>
+            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'16px', lineHeight:'1.6' }}>
+              {enrolledProgram.description}
+            </p>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'12px',
+                          padding:'14px 0', borderTop:'1px solid var(--glass-border)' }}>
+              {[['Type', enrolledProgram.type], ['Duration', enrolledProgram.duration], ['Units', enrolledProgram.totalUnits]].map(([l,v]) => (
+                <div key={l}>
+                  <p style={{ color:'var(--secondary-color)', fontSize:'10px', textTransform:'uppercase', marginBottom:'3px' }}>{l}</p>
+                  <p style={{ fontWeight:700 }}>{v}</p>
+                </div>
+              ))}
+            </div>
+            {enrolledProgram.yearLevels?.length > 0 && (
+              <div style={{ marginTop:'16px' }}>
+                <p style={{ fontSize:'12px', color:'var(--text-muted)', textTransform:'uppercase',
+                            letterSpacing:'0.5px', marginBottom:'10px' }}>Curriculum Structure</p>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'8px' }}>
+                  {enrolledProgram.yearLevels.map((level, idx) => (
+                    <div key={idx} style={{ background:'rgba(255,255,255,0.04)', padding:'10px 14px',
+                                            borderRadius:'10px', border:'1px solid var(--glass-border)',
+                                            display:'flex', justifyContent:'space-between' }}>
+                      <span style={{ fontSize:'13px', fontWeight:500 }}>{level.year}</span>
+                      <span style={{ color:'var(--secondary-color)', fontSize:'11px' }}>{level.subjects?.length} Subj</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Divider before other programs */}
+          <div style={{ display:'flex', alignItems:'center', gap:'16px', margin:'28px 0 20px' }}>
+            <div style={{ flex:1, height:'1px', background:'var(--glass-border)' }} />
+            <span style={{ fontSize:'12px', color:'var(--text-muted)', textTransform:'uppercase',
+                           letterSpacing:'1px', whiteSpace:'nowrap' }}>Other Programs</span>
+            <div style={{ flex:1, height:'1px', background:'var(--glass-border)' }} />
+          </div>
+          <p style={{ color:'var(--text-muted)', fontSize:'13px', marginBottom:'20px' }}>
+            Browse other available degree programs
+          </p>
+        </>
+      )}
+
+      {/* Controls (admin always, student when not enrolled or enrolled showing others) */}
       <div className="controls-row" style={{ marginBottom:'28px' }}>
         <div className="search-bar" style={{ flex:1, minWidth:'220px', maxWidth:'400px' }}>
           <span className="search-bar-icon"><Search size={15} /></span>
@@ -146,20 +246,36 @@ function ProgramList() {
         </select>
       </div>
 
-      {/* Grid */}
-      {filteredPrograms.length > 0 ? (
+      {/* Programs grid */}
+      {(isAdminUser ? localPrograms.filter(p => {
+          const matchStatus = filter==='all' || p.status===filter;
+          const q = search.toLowerCase();
+          return matchStatus && (!q || p.code?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q));
+        }) : (enrollStatus === 'approved' ? otherPrograms : localPrograms.filter(p => {
+          const matchStatus = filter==='all' || p.status===filter;
+          const q = search.toLowerCase();
+          return matchStatus && (!q || p.code?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q));
+        }))
+      ).length > 0 ? (
         <div className="programs-grid">
-          {filteredPrograms.map(program => (
-            <div key={program.id} className="program-card"
-                 onClick={() => setSelectedProgram(program)}>
-              <div style={{ display:'flex', justifyContent:'space-between',
-                            alignItems:'flex-start', marginBottom:'14px' }}>
+          {(isAdminUser ? localPrograms.filter(p => {
+              const matchStatus = filter==='all' || p.status===filter;
+              const q = search.toLowerCase();
+              return matchStatus && (!q || p.code?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q));
+            }) : (enrollStatus === 'approved' ? otherPrograms : localPrograms.filter(p => {
+              const matchStatus = filter==='all' || p.status===filter;
+              const q = search.toLowerCase();
+              return matchStatus && (!q || p.code?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q));
+            }))
+          ).map(program => (
+            <div key={program.id} className="program-card" onClick={() => setSelected(program)}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'14px' }}>
                 <div>
                   <h3 className="card-title">{program.code}</h3>
                   <p className="card-subtitle">{program.type}</p>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                  <span className={`badge ${program.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
+                  <span className={`badge ${program.status==='active' ? 'badge-success' : 'badge-warning'}`}>
                     {program.status}
                   </span>
                   {isAdminUser && (
@@ -180,29 +296,22 @@ function ProgramList() {
                   )}
                 </div>
               </div>
-
-              <p style={{ color:'var(--text-muted)', fontSize:'0.8rem',
-                          marginBottom:'18px', lineHeight:'1.6', flex:1 }}>
-                {program.description?.substring(0, 90)}…
+              <p style={{ color:'var(--text-muted)', fontSize:'0.8rem', marginBottom:'18px', lineHeight:'1.6', flex:1 }}>
+                {program.description?.substring(0,90)}…
               </p>
-
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px',
-                            marginBottom:'18px', paddingTop:'14px',
-                            borderTop:'1px solid var(--glass-border)' }}>
+                            marginBottom:'18px', paddingTop:'14px', borderTop:'1px solid var(--glass-border)' }}>
                 <div>
-                  <p style={{ color:'var(--secondary-color)', fontSize:'10px',
-                              textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'3px' }}>Duration</p>
+                  <p style={{ color:'var(--secondary-color)', fontSize:'10px', textTransform:'uppercase', marginBottom:'3px' }}>Duration</p>
                   <p style={{ fontWeight:700, fontSize:'0.9rem' }}>{program.duration}</p>
                 </div>
                 <div>
-                  <p style={{ color:'var(--secondary-color)', fontSize:'10px',
-                              textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'3px' }}>Units</p>
+                  <p style={{ color:'var(--secondary-color)', fontSize:'10px', textTransform:'uppercase', marginBottom:'3px' }}>Units</p>
                   <p style={{ fontWeight:700, fontSize:'0.9rem' }}>{program.totalUnits}</p>
                 </div>
               </div>
-
               <button className="btn-primary"
-                onClick={e => { e.stopPropagation(); setSelectedProgram(program); }}
+                onClick={e => { e.stopPropagation(); setSelected(program); }}
                 style={{ width:'100%' }}>
                 View Details
               </button>
@@ -216,59 +325,45 @@ function ProgramList() {
         </div>
       )}
 
-      {/* ── View Details Modal ── */}
-      {selectedProgram && (
-        <div className="modal-overlay" onClick={() => setSelectedProgram(null)}>
+      {/* View Details Modal */}
+      {selected && (
+        <div className="modal-overlay" onClick={() => setSelected(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{selectedProgram.code}</h2>
-              <p className="card-subtitle" style={{ marginTop:'4px' }}>{selectedProgram.name}</p>
+              <h2>{selected.code}</h2>
+              <p className="card-subtitle" style={{ marginTop:'4px' }}>{selected.name}</p>
             </div>
-            <button className="modal-close" onClick={() => setSelectedProgram(null)}>✕</button>
-
+            <button className="modal-close" onClick={() => setSelected(null)}>✕</button>
             <div className="modal-body">
-              <span className={`badge ${selectedProgram.status === 'active' ? 'badge-success' : 'badge-warning'}`}
+              <span className={`badge ${selected.status==='active' ? 'badge-success' : 'badge-warning'}`}
                     style={{ marginBottom:'18px', display:'inline-block' }}>
-                {selectedProgram.status?.toUpperCase()}
+                {selected.status?.toUpperCase()}
               </span>
               <div style={{ marginBottom:'22px' }}>
-                <h4 style={{ color:'var(--secondary-color)', fontSize:'11px',
-                             textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'8px' }}>
-                  Description
-                </h4>
-                <p style={{ color:'var(--text-muted)', fontSize:'0.875rem', lineHeight:'1.7' }}>
-                  {selectedProgram.description}
-                </p>
+                <h4 style={{ color:'var(--secondary-color)', fontSize:'11px', textTransform:'uppercase', marginBottom:'8px' }}>Description</h4>
+                <p style={{ color:'var(--text-muted)', fontSize:'0.875rem', lineHeight:'1.7' }}>{selected.description}</p>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'16px',
                             padding:'18px 0', borderTop:'1px solid var(--glass-border)',
                             borderBottom:'1px solid var(--glass-border)', marginBottom:'22px' }}>
-                {[['Type', selectedProgram.type], ['Duration', selectedProgram.duration],
-                  ['Total Units', selectedProgram.totalUnits], ['Status', selectedProgram.status]
-                ].map(([lbl, val]) => (
-                  <div key={lbl}>
-                    <span style={{ display:'block', fontSize:'10px', color:'var(--text-muted)',
-                                   textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'3px' }}>
-                      {lbl}
-                    </span>
-                    <span style={{ fontWeight:700, fontSize:'0.9rem' }}>{val}</span>
+                {[['Type',selected.type],['Duration',selected.duration],['Total Units',selected.totalUnits],['Status',selected.status]].map(([l,v]) => (
+                  <div key={l}>
+                    <span style={{ display:'block', fontSize:'10px', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'3px' }}>{l}</span>
+                    <span style={{ fontWeight:700, fontSize:'0.9rem' }}>{v}</span>
                   </div>
                 ))}
               </div>
-              {selectedProgram.yearLevels?.length > 0 && (
+              {selected.yearLevels?.length > 0 && (
                 <div>
-                  <h4 style={{ fontSize:'0.875rem', marginBottom:'12px', fontWeight:700 }}>
-                    Curriculum Structure
-                  </h4>
+                  <h4 style={{ fontSize:'0.875rem', marginBottom:'12px', fontWeight:700 }}>Curriculum Structure</h4>
                   <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                    {selectedProgram.yearLevels.map((level, idx) => (
-                      <div key={idx} style={{ background:'rgba(255,255,255,0.04)',
-                                              padding:'13px 16px', borderRadius:'10px',
-                                              display:'flex', justifyContent:'space-between',
+                    {selected.yearLevels.map((lv,idx) => (
+                      <div key={idx} style={{ background:'rgba(255,255,255,0.04)', padding:'13px 16px',
+                                              borderRadius:'10px', display:'flex', justifyContent:'space-between',
                                               border:'1px solid var(--glass-border)' }}>
-                        <span style={{ fontWeight:500, fontSize:'0.875rem' }}>{level.year}</span>
+                        <span style={{ fontWeight:500, fontSize:'0.875rem' }}>{lv.year}</span>
                         <span style={{ color:'var(--secondary-color)', fontSize:'11px', fontWeight:600 }}>
-                          {level.subjects?.length} Subjects
+                          {lv.subjects?.length} Subjects
                         </span>
                       </div>
                     ))}
@@ -276,29 +371,33 @@ function ProgramList() {
                 </div>
               )}
             </div>
-
             <div className="modal-footer">
-              {!isAdminUser && (
-                isEnrolled(selectedProgram) ? (
-                  <button className="btn-primary btn" style={{ flex:1 }} disabled>
-                    ✅ Already Enrolled
-                  </button>
-                ) : (
-                  <button className="btn-primary btn" style={{ flex:1 }}
-                    onClick={() => { handleEnroll(selectedProgram); setSelectedProgram(null); }}
-                    disabled={enrolling}>
-                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
-                  </button>
-                )
-              )}
+              {/* Admin: edit button */}
               {isAdminUser && (
                 <button className="btn-primary btn" style={{ flex:1 }}
-                  onClick={e => { openEdit(e, selectedProgram); setSelectedProgram(null); }}>
+                  onClick={e => { openEdit(e, selected); setSelected(null); }}>
                   ✏️ Edit Program
                 </button>
               )}
-              <button className="btn btn-secondary" style={{ flex:1 }}
-                onClick={() => setSelectedProgram(null)}>
+              {/* Student: request enrollment (only if not enrolled/pending) */}
+              {!isAdminUser && enrollStatus === 'none' && (
+                <button className="btn-primary btn" style={{ flex:1 }}
+                  onClick={() => handleEnrollRequest(selected)}
+                  disabled={requesting}>
+                  {requesting ? 'Submitting...' : '📋 Request Enrollment'}
+                </button>
+              )}
+              {!isAdminUser && enrollStatus === 'pending' && (
+                <button disabled className="btn-primary btn" style={{ flex:1, opacity:0.6 }}>
+                  ⏳ Request Pending
+                </button>
+              )}
+              {!isAdminUser && enrollStatus === 'approved' && (
+                <button disabled className="btn-primary btn" style={{ flex:1, opacity:0.6 }}>
+                  👁️ View Only
+                </button>
+              )}
+              <button className="btn btn-secondary" style={{ flex:1 }} onClick={() => setSelected(null)}>
                 Close
               </button>
             </div>
@@ -306,15 +405,12 @@ function ProgramList() {
         </div>
       )}
 
-      {/* ── Add/Edit Form Modal ── */}
+      {/* Add/Edit Form Modal */}
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editMode ? 'Edit Program' : 'Add New Program'}</h2>
-            </div>
+            <div className="modal-header"><h2>{editMode ? 'Edit Program' : 'Add New Program'}</h2></div>
             <button className="modal-close" onClick={() => setShowForm(false)}>✕</button>
-
             <div className="modal-body">
               {formError && (
                 <div style={{ background:'rgba(255,68,102,0.1)', border:'1px solid rgba(255,68,102,0.2)',
@@ -323,80 +419,52 @@ function ProgramList() {
                   {formError}
                 </div>
               )}
-              <form onSubmit={handleSaveForm}
-                    style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+              <form onSubmit={handleSave} style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
                 {[
-                  { label:'Program Code', name:'code',     placeholder:'e.g. BSIT',         disabled: editMode },
-                  { label:'Full Name',    name:'name',     placeholder:'e.g. Bachelor of...' },
-                  { label:'Duration',     name:'duration', placeholder:'e.g. 4 years'        },
-                  { label:'Total Units',  name:'totalUnits', placeholder:'e.g. 132', type:'number' },
+                  { label:'Program Code', name:'code',     placeholder:'e.g. BSIT',  disabled:editMode },
+                  { label:'Full Name',    name:'name',     placeholder:'Bachelor of...' },
+                  { label:'Duration',     name:'duration', placeholder:'e.g. 4 years' },
+                  { label:'Total Units',  name:'totalUnits', placeholder:'132', type:'number' },
                 ].map(f => (
                   <div key={f.name}>
                     <label style={{ fontSize:'12px', color:'var(--text-muted)', display:'block',
-                                    marginBottom:'6px', textTransform:'uppercase' }}>
-                      {f.label}
-                    </label>
-                    <input type={f.type || 'text'} placeholder={f.placeholder}
-                      value={form[f.name]}
-                      onChange={e => setForm(p => ({...p, [f.name]: e.target.value}))}
+                                    marginBottom:'6px', textTransform:'uppercase' }}>{f.label}</label>
+                    <input type={f.type||'text'} placeholder={f.placeholder}
+                      value={form[f.name]} onChange={e => setForm(p => ({...p, [f.name]:e.target.value}))}
                       disabled={f.disabled}
-                      style={{ width:'100%', background:'rgba(255,255,255,0.05)',
-                               border:'1px solid var(--glass-border)', borderRadius:'10px',
-                               padding:'10px 14px', color:'#fff', fontSize:'14px',
-                               outline:'none', boxSizing:'border-box',
-                               opacity: f.disabled ? 0.5 : 1 }} />
+                      style={{ ...inputStyle, opacity: f.disabled ? 0.5 : 1 }} />
                   </div>
                 ))}
-
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
                   <div>
-                    <label style={{ fontSize:'12px', color:'var(--text-muted)', display:'block',
-                                    marginBottom:'6px', textTransform:'uppercase' }}>Type</label>
-                    <select value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}
-                      style={{ width:'100%', background:'rgba(255,255,255,0.05)',
-                               border:'1px solid var(--glass-border)', borderRadius:'10px',
-                               padding:'10px 14px', color:'#fff', fontSize:'14px', outline:'none' }}>
-                      <option value="Bachelor">Bachelor</option>
-                      <option value="Master">Master</option>
-                      <option value="Diploma">Diploma</option>
+                    <label style={{ fontSize:'12px', color:'var(--text-muted)', display:'block', marginBottom:'6px', textTransform:'uppercase' }}>Type</label>
+                    <select value={form.type} onChange={e => setForm(p => ({...p,type:e.target.value}))} style={inputStyle}>
+                      {['Bachelor','Master','Diploma'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize:'12px', color:'var(--text-muted)', display:'block',
-                                    marginBottom:'6px', textTransform:'uppercase' }}>Status</label>
-                    <select value={form.status} onChange={e => setForm(p => ({...p, status: e.target.value}))}
-                      style={{ width:'100%', background:'rgba(255,255,255,0.05)',
-                               border:'1px solid var(--glass-border)', borderRadius:'10px',
-                               padding:'10px 14px', color:'#fff', fontSize:'14px', outline:'none' }}>
+                    <label style={{ fontSize:'12px', color:'var(--text-muted)', display:'block', marginBottom:'6px', textTransform:'uppercase' }}>Status</label>
+                    <select value={form.status} onChange={e => setForm(p => ({...p,status:e.target.value}))} style={inputStyle}>
                       <option value="active">Active</option>
                       <option value="under review">Under Review</option>
                     </select>
                   </div>
                 </div>
-
                 <div>
-                  <label style={{ fontSize:'12px', color:'var(--text-muted)', display:'block',
-                                  marginBottom:'6px', textTransform:'uppercase' }}>Description</label>
-                  <textarea value={form.description}
-                    onChange={e => setForm(p => ({...p, description: e.target.value}))}
+                  <label style={{ fontSize:'12px', color:'var(--text-muted)', display:'block', marginBottom:'6px', textTransform:'uppercase' }}>Description</label>
+                  <textarea value={form.description} onChange={e => setForm(p => ({...p,description:e.target.value}))}
                     rows={3} placeholder="Program description..."
-                    style={{ width:'100%', background:'rgba(255,255,255,0.05)',
-                             border:'1px solid var(--glass-border)', borderRadius:'10px',
-                             padding:'10px 14px', color:'#fff', fontSize:'14px',
-                             outline:'none', resize:'vertical', boxSizing:'border-box' }} />
+                    style={{ ...inputStyle, resize:'vertical' }} />
                 </div>
-
                 <div style={{ display:'flex', gap:'12px', marginTop:'8px' }}>
                   <button type="button" onClick={() => setShowForm(false)}
-                    style={{ flex:1, padding:'10px', borderRadius:'10px',
-                             border:'1px solid var(--glass-border)', background:'transparent',
-                             color:'#fff', cursor:'pointer', fontSize:'14px' }}>
+                    style={{ flex:1, padding:'10px', borderRadius:'10px', border:'1px solid var(--glass-border)',
+                             background:'transparent', color:'#fff', cursor:'pointer', fontSize:'14px' }}>
                     Cancel
                   </button>
                   <button type="submit" disabled={saving}
-                    style={{ flex:1, padding:'10px', borderRadius:'10px',
-                             border:'none', background:'var(--primary-color)',
-                             color:'#fff', cursor:'pointer', fontSize:'14px', fontWeight:600 }}>
+                    style={{ flex:1, padding:'10px', borderRadius:'10px', border:'none',
+                             background:'var(--primary-color)', color:'#fff', cursor:'pointer', fontSize:'14px', fontWeight:600 }}>
                     {saving ? 'Saving...' : editMode ? 'Save Changes' : 'Add Program'}
                   </button>
                 </div>
@@ -405,6 +473,19 @@ function ProgramList() {
           </div>
         </div>
       )}
+
+      {/* Reusable confirm dialog */}
+      <ConfirmDialog
+        isOpen={!!confirm}
+        icon={confirm?.icon ?? '⚠️'}
+        title={confirm?.title ?? 'Are you sure?'}
+        message={confirm?.message ?? ''}
+        confirmLabel={confirm?.confirmLabel ?? 'Confirm'}
+        cancelLabel={confirm?.cancelLabel ?? 'Cancel'}
+        danger={confirm?.danger !== false}
+        onConfirm={confirm?.onConfirm}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 }

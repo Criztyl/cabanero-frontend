@@ -15,6 +15,8 @@ export function AppProvider({ children }) {
     courseUpdates:      true,
   });
   const [myEnrollment, setMyEnrollment] = useState({ program: null, courses: [] });
+  const [programs,  setPrograms]  = useState(null);
+  const [subjects,  setSubjects]  = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -109,6 +111,8 @@ export function AppProvider({ children }) {
       myEnrollment, fetchMyEnrollment,
       login, logout,
       enrollInProgram,
+      programs, setPrograms,
+      subjects, setSubjects,
     }}>
       {children}
     </AppContext.Provider>

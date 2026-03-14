@@ -1,28 +1,39 @@
 /* ============================================
    STRUCTURA — global.css
-   Auth page layouts only.
-   Dashboard/component styles live in App.css
+   Auth pages only. Dashboard styles in App.css
    ============================================ */
 
 /* ============================================
-   SHARED AUTH BACKGROUND
-   One unified dark canvas used by BOTH pages
+   AUTH BACKGROUND — adapts to theme
    ============================================ */
-
 .auth-split-page,
 .auth-page {
   width: 100%;
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse 60% 70% at 18% 40%, rgba(255, 0, 85, 0.13) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 60% at 82% 20%, rgba(0, 212, 255, 0.10) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 50% at 65% 80%, rgba(255, 0, 85, 0.06) 0%, transparent 50%),
-    #09090b;
   position: relative;
   overflow: hidden;
 }
 
-/* Shared animated orbs - adds depth across the whole page */
+[data-theme="dark"] .auth-split-page,
+[data-theme="dark"] .auth-page,
+:root .auth-split-page,
+:root .auth-page {
+  background:
+    radial-gradient(ellipse 60% 70% at 18% 40%, rgba(255,0,85,0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 82% 20%, rgba(0,212,255,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 50% at 65% 80%, rgba(255,0,85,0.06) 0%, transparent 50%),
+    #09090b;
+}
+
+[data-theme="light"] .auth-split-page,
+[data-theme="light"] .auth-page {
+  background:
+    radial-gradient(ellipse 60% 70% at 18% 40%, rgba(214,0,58,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 82% 20%, rgba(0,119,187,0.06) 0%, transparent 55%),
+    #eef0f6;
+}
+
+/* Animated orbs */
 .auth-split-page::before,
 .auth-page::before {
   content: '';
@@ -33,6 +44,11 @@
   background: radial-gradient(circle, rgba(255,0,85,0.06) 0%, transparent 70%);
   animation: authOrb 11s ease-in-out infinite;
   pointer-events: none;
+}
+
+[data-theme="light"] .auth-split-page::before,
+[data-theme="light"] .auth-page::before {
+  background: radial-gradient(circle, rgba(214,0,58,0.04) 0%, transparent 70%);
 }
 
 .auth-split-page::after,
@@ -47,17 +63,36 @@
   pointer-events: none;
 }
 
-/* Subtle dot grid over entire background */
+[data-theme="light"] .auth-split-page::after,
+[data-theme="light"] .auth-page::after {
+  background: radial-gradient(circle, rgba(0,119,187,0.04) 0%, transparent 70%);
+}
+
+/* Dot grid */
 .auth-split-page .auth-grid-texture,
 .auth-page .auth-grid-texture {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme="dark"] .auth-split-page .auth-grid-texture,
+[data-theme="dark"] .auth-page .auth-grid-texture,
+:root .auth-split-page .auth-grid-texture,
+:root .auth-page .auth-grid-texture {
   background-image:
     linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
   background-size: 44px 44px;
-  pointer-events: none;
-  z-index: 0;
+}
+
+[data-theme="light"] .auth-split-page .auth-grid-texture,
+[data-theme="light"] .auth-page .auth-grid-texture {
+  background-image:
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
 }
 
 @keyframes authOrb {
@@ -71,15 +106,11 @@
 }
 
 /* ============================================
-   SPLIT LAYOUT  (.auth-split-page)
-   Login + any two-panel page
+   SPLIT LAYOUT
    ============================================ */
+.auth-split-page { display: flex; }
 
-.auth-split-page {
-  display: flex;
-}
-
-/* --- LEFT BRANDING PANEL --- */
+/* --- LEFT PANEL --- */
 .auth-split-left {
   flex: 0 0 55%;
   display: flex;
@@ -88,10 +119,8 @@
   padding: 72px 80px;
   position: relative;
   z-index: 1;
-  /* No background — inherits the shared canvas above */
 }
 
-/* Extra glow blob centered on the left panel */
 .auth-split-left .auth-left-glow {
   position: absolute;
   width: 320px; height: 320px;
@@ -121,12 +150,24 @@
   margin-bottom: 28px;
 }
 
+[data-theme="light"] .auth-brand-tagline {
+  color: rgba(214, 0, 58, 0.7);
+}
+
 .auth-brand-headline {
   font-size: 2.7rem;
   font-weight: 800;
   line-height: 1.15;
-  color: #fff;
   margin-bottom: 18px;
+}
+
+[data-theme="dark"] .auth-brand-headline,
+:root .auth-brand-headline {
+  color: #fff;
+}
+
+[data-theme="light"] .auth-brand-headline {
+  color: #0f0f1a;
 }
 
 .auth-brand-headline span {
@@ -135,15 +176,25 @@
   -webkit-text-fill-color: transparent;
 }
 
+[data-theme="light"] .auth-brand-headline span {
+  background: linear-gradient(90deg, #d6003a, #0077bb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .auth-brand-sub {
   font-size: 0.9rem;
-  color: #71717a;
   line-height: 1.8;
   max-width: 440px;
   margin-bottom: 40px;
 }
 
-/* Feature list */
+[data-theme="dark"] .auth-brand-sub,
+:root .auth-brand-sub { color: #71717a; }
+
+[data-theme="light"] .auth-brand-sub { color: #52525b; }
+
+/* Features */
 .auth-features {
   list-style: none;
   display: flex;
@@ -157,21 +208,32 @@
   align-items: center;
   gap: 14px;
   font-size: 0.875rem;
-  color: #a1a1aa;
 }
+
+[data-theme="dark"] .auth-features li,
+:root .auth-features li { color: #a1a1aa; }
+
+[data-theme="light"] .auth-features li { color: #52525b; }
 
 .auth-feature-icon {
   width: 36px; height: 36px;
   border-radius: 10px;
-  background: rgba(255, 0, 85, 0.08);
-  border: 1px solid rgba(255, 0, 85, 0.18);
+  background: rgba(255,0,85,0.08);
+  border: 1px solid rgba(255,0,85,0.18);
   display: flex; align-items: center; justify-content: center;
   color: #ff0055;
   flex-shrink: 0;
   transition: background 0.2s, box-shadow 0.2s;
 }
+
+[data-theme="light"] .auth-feature-icon {
+  background: rgba(214,0,58,0.07);
+  border-color: rgba(214,0,58,0.2);
+  color: #d6003a;
+}
+
 .auth-features li:hover .auth-feature-icon {
-  background: rgba(255, 0, 85, 0.16);
+  background: rgba(255,0,85,0.16);
   box-shadow: 0 0 14px rgba(255,0,85,0.25);
 }
 
@@ -180,15 +242,32 @@
   display: flex;
   gap: 0;
   padding-top: 28px;
+}
+
+[data-theme="dark"] .auth-stats,
+:root .auth-stats {
   border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+[data-theme="light"] .auth-stats {
+  border-top: 1px solid rgba(0,0,0,0.08);
 }
 
 .auth-stat-item {
   flex: 1;
   text-align: center;
   padding: 0 10px;
+}
+
+[data-theme="dark"] .auth-stat-item,
+:root .auth-stat-item {
   border-right: 1px solid rgba(255,255,255,0.07);
 }
+
+[data-theme="light"] .auth-stat-item {
+  border-right: 1px solid rgba(0,0,0,0.08);
+}
+
 .auth-stat-item:first-child { padding-left: 0; text-align: left; }
 .auth-stat-item:last-child  { border-right: none; }
 
@@ -208,8 +287,12 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #3f3f46;
 }
+
+[data-theme="dark"] .auth-stat-label,
+:root .auth-stat-label { color: #3f3f46; }
+
+[data-theme="light"] .auth-stat-label { color: #71717a; }
 
 /* --- RIGHT FORM PANEL --- */
 .auth-split-right {
@@ -220,100 +303,138 @@
   padding: 40px 56px;
   position: relative;
   z-index: 1;
-  /* No background — same unified canvas */
 }
 
-/* The actual card */
+/* Auth box / card */
 .auth-box {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: 420px;
-  /* Very subtle card — glass tint only, no hard border that creates a "box" feel */
-  background: rgba(255, 255, 255, 0.028);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 24px;
   padding: 44px 40px;
-  box-shadow:
-    0 0 0 1px rgba(255,0,85,0.04),
-    0 32px 80px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255,255,255,0.04);
   animation: authSlideUp 0.55s ease-out both;
 }
 
-/* ============================================
-   SIGNUP SINGLE-COLUMN PAGE  (.auth-page)
-   ============================================ */
-
-.auth-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+[data-theme="dark"] .auth-box,
+:root .auth-box {
+  background: rgba(255,255,255,0.028);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow:
+    0 0 0 1px rgba(255,0,85,0.04),
+    0 32px 80px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
-.auth-page .auth-box {
-  max-width: 480px;
-}
-.auth-page .auth-box:has(.signup-fields-container) {
-  max-width: 540px;
-}
-
-/* Signup two-col grid */
-@media (min-width: 768px) {
-  .auth-page .auth-box:has(.signup-fields-container) { max-width: 800px; }
-  .signup-fields-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 24px;
-  }
-}
-@media (min-width: 1024px) {
-  .auth-page .auth-box:has(.signup-fields-container) { max-width: 860px; }
+[data-theme="light"] .auth-box {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.8);
 }
 
 /* ============================================
-   SHARED FORM ELEMENTS
+   SHARED FORM ELEMENTS (auth pages)
    ============================================ */
-
 .form-group { margin-bottom: 18px; width: 100%; }
 
 .form-group label {
-  display: block; margin-bottom: 7px;
-  font-size: 0.68rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.9px;
-  color: #71717a;
+  display: block;
+  margin-bottom: 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
 }
+
+[data-theme="dark"] .form-group label,
+:root .form-group label { color: #71717a; }
+
+[data-theme="light"] .form-group label { color: #52525b; }
 
 .form-group input,
 .form-group select {
-  width: 100%; padding: 12px 16px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-family: 'Outfit', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+:root .form-group input,
+:root .form-group select {
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.09);
-  border-radius: 12px; font-size: 0.9rem;
-  color: #f4f4f5; font-family: 'Outfit', sans-serif;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  color: #f4f4f5;
+}
+
+[data-theme="dark"] .form-group input::placeholder,
+:root .form-group input::placeholder {
+  color: #52525b;
+}
+
+[data-theme="light"] .form-group input,
+[data-theme="light"] .form-group select {
+  background: #f4f5f9;
+  border: 1px solid rgba(0,0,0,0.1);
+  color: #0f0f1a;
+}
+
+[data-theme="light"] .form-group input::placeholder {
+  color: #9ca3af;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: rgba(255, 0, 85, 0.6);
+  border-color: rgba(255,0,85,0.6);
+}
+
+[data-theme="dark"] .form-group input:focus,
+:root .form-group input:focus {
   background: rgba(255,255,255,0.07);
   box-shadow: 0 0 0 3px rgba(255,0,85,0.10);
 }
 
-.form-group select option { background: #18181b; color: #f4f4f5; }
+[data-theme="light"] .form-group input:focus,
+[data-theme="light"] .form-group select:focus {
+  background: #fff;
+  border-color: rgba(214,0,58,0.5);
+  box-shadow: 0 0 0 3px rgba(214,0,58,0.1);
+}
 
+.form-group select option {
+  background: #18181b;
+  color: #f4f4f5;
+}
+
+[data-theme="light"] .form-group select option {
+  background: #ffffff;
+  color: #0f0f1a;
+}
+
+/* Auth button */
 .auth-btn {
-  width: 100%; padding: 13px;
+  width: 100%;
+  padding: 13px;
   background: linear-gradient(135deg, #ff0055, #cc0044);
-  color: #fff; border: none; border-radius: 12px;
-  font-weight: 700; font-size: 0.875rem;
-  text-transform: uppercase; letter-spacing: 0.8px;
-  cursor: pointer; margin-top: 6px;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  margin-top: 6px;
   transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
 }
 .auth-btn:hover:not(:disabled) {
@@ -322,17 +443,59 @@
 }
 .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.auth-footer {
-  text-align: center; margin-top: 22px;
-  color: #52525b; font-size: 0.85rem;
+[data-theme="light"] .auth-btn {
+  background: linear-gradient(135deg, #d6003a, #aa0030);
 }
+[data-theme="light"] .auth-btn:hover:not(:disabled) {
+  box-shadow: 0 10px 30px rgba(214,0,58,0.3);
+}
+
+/* Footer link */
+.auth-footer {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 0.85rem;
+}
+
+[data-theme="dark"] .auth-footer,
+:root .auth-footer { color: #52525b; }
+
+[data-theme="light"] .auth-footer { color: #71717a; }
+
 .auth-footer a { color: #00d4ff; text-decoration: none; font-weight: 600; }
 .auth-footer a:hover { text-decoration: underline; }
 
-/* ============================================
-   RESPONSIVE — stack on small screens
-   ============================================ */
+[data-theme="light"] .auth-footer a { color: #0077bb; }
 
+/* ============================================
+   SIGNUP
+   ============================================ */
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-page .auth-box { max-width: 480px; }
+.auth-page .auth-box:has(.signup-fields-container) { max-width: 540px; }
+
+@media (min-width: 768px) {
+  .auth-page .auth-box:has(.signup-fields-container) { max-width: 800px; }
+  .signup-fields-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-page .auth-box:has(.signup-fields-container) { max-width: 860px; }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 960px) {
   .auth-split-page { flex-direction: column; }
 

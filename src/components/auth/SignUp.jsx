@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { AppContext } from '../../context/AppContext';
 import '../../styles/global.css';
 
@@ -9,11 +9,18 @@ function SignUp() {
   const { login } = useContext(AppContext);
 
   const [formData, setFormData] = useState({
-    fullName: '', email: '', password: '',
-    confirmPassword: '', studentId: '', department: '', agreeTerms: false
+    fullName:        '',
+    email:           '',
+    password:        '',
+    confirmPassword: '',
+    studentId:       '',
+    department:      '',
+    agreeTerms:      false,
   });
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showConf, setShowConf] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -21,50 +28,62 @@ function SignUp() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return; }
-  if (!formData.agreeTerms) { setError('You must agree to the terms'); return; }
-  setLoading(true);
-
-  try {
-    const response = await fetch('http://127.0.0.1:8000/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        name:     formData.fullName,
-        email:    formData.email,
-        password: formData.password,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      localStorage.setItem('token', data.token);
-      login(data.user, data.token, 'student');
-      navigate('/dashboard');
-    } else {
-      setError(data.message || 'Registration failed.');
+    e.preventDefault();
+    setError('');
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
     }
-  } catch (err) {
-    setError('Unable to connect to server. Is Laravel running?');
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!formData.agreeTerms) {
+      setError('You must agree to the terms');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/register', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          name:     formData.fullName,
+          email:    formData.email,
+          password: formData.password,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        login(data.user, data.token, data.user.role);
+        navigate('/dashboard');
+      } else {
+        setError(data.message || 'Registration failed.');
+      }
+    } catch {
+      setError('Unable to connect to server. Is Laravel running?');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const iconStyle = {
+    position: 'absolute', left: '14px', top: '50%',
+    transform: 'translateY(-50%)', color: '#3f3f46', pointerEvents: 'none',
+  };
+
+  const eyeStyle = {
+    position: 'absolute', right: '14px', top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'transparent', border: 'none',
+    color: '#71717a', cursor: 'pointer',
+    padding: 0, display: 'flex', alignItems: 'center',
+  };
 
   return (
-    /* Reuse the split layout — narrower left panel for signup */
     <div className="auth-split-page">
-
-      {/* Shared background texture */}
       <div className="auth-grid-texture" />
 
-      {/* ── LEFT  — minimal branding ─────────────── */}
+      {/* ── LEFT PANEL ── */}
       <div className="auth-split-left" style={{ flex: '0 0 38%', padding: '72px 56px' }}>
         <div className="auth-left-glow" />
-
         <div className="auth-brand-logo">STRUCTURA</div>
         <p className="auth-brand-tagline">Academic Management Platform</p>
 
@@ -74,12 +93,12 @@ function SignUp() {
         </h1>
 
         <p className="auth-brand-sub">
-          Create your account and gain access to programs, subjects, and your personalized academic dashboard.
+          Create your account and gain access to programs, subjects,
+          and your personalized academic dashboard.
         </p>
 
-        {/* Minimal stats — no feature list to keep it light */}
         <div className="auth-stats" style={{ marginTop: 'auto' }}>
-          {[['5','Programs'],['21','Subjects'],['1,280','Students']].map(([num,lbl]) => (
+          {[['5','Programs'],['21','Subjects'],['1,280','Students']].map(([num, lbl]) => (
             <div className="auth-stat-item" key={lbl}>
               <span className="auth-stat-num">{num}</span>
               <span className="auth-stat-label">{lbl}</span>
@@ -88,7 +107,7 @@ function SignUp() {
         </div>
       </div>
 
-      {/* ── RIGHT — sign-up form ──────────────────── */}
+      {/* ── RIGHT PANEL ── */}
       <div className="auth-split-right" style={{ padding: '40px 48px', alignItems: 'center' }}>
         <div className="auth-box" style={{ maxWidth: '560px' }}>
 
@@ -106,7 +125,7 @@ function SignUp() {
               color: '#ff4466', background: 'rgba(255,68,102,0.08)',
               border: '1px solid rgba(255,68,102,0.2)',
               borderRadius: '10px', padding: '10px 14px',
-              marginBottom: '16px', fontSize: '0.82rem'
+              marginBottom: '16px', fontSize: '0.82rem',
             }}>
               {error}
             </div>
@@ -115,63 +134,107 @@ function SignUp() {
           <form onSubmit={handleSubmit}>
             <div className="signup-fields-container">
 
+              {/* Full Name */}
               <div className="form-group">
                 <label>Full Name</label>
                 <div style={{ position: 'relative' }}>
-                  <User size={15} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#3f3f46', pointerEvents: 'none' }} />
-                  <input type="text" name="fullName" placeholder="John Doe"
+                  <User size={15} style={iconStyle} />
+                  <input
+                    type="text" name="fullName" placeholder="John Doe"
                     value={formData.fullName} onChange={handleChange}
-                    style={{ paddingLeft: '42px' }} required />
+                    style={{ paddingLeft: '42px' }} required
+                  />
                 </div>
               </div>
 
+              {/* Email */}
               <div className="form-group">
                 <label>Email Address</label>
                 <div style={{ position: 'relative' }}>
-                  <Mail size={15} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#3f3f46', pointerEvents: 'none' }} />
-                  <input type="email" name="email" placeholder="student@structura.edu"
+                  <Mail size={15} style={iconStyle} />
+                  <input
+                    type="email" name="email" placeholder="student@structura.edu"
                     value={formData.email} onChange={handleChange}
-                    style={{ paddingLeft: '42px' }} required />
+                    style={{ paddingLeft: '42px' }} required
+                  />
                 </div>
               </div>
 
+              {/* Student ID */}
               <div className="form-group">
                 <label>Student ID</label>
-                <input type="text" name="studentId" placeholder="2024-001234"
-                  value={formData.studentId} onChange={handleChange} required />
+                <input
+                  type="text" name="studentId" placeholder="2024-001234"
+                  value={formData.studentId} onChange={handleChange} required
+                />
               </div>
 
+              {/* Department */}
               <div className="form-group">
                 <label>Department</label>
-                <select name="department" value={formData.department} onChange={handleChange} required>
+                <select
+                  name="department" value={formData.department}
+                  onChange={handleChange} required
+                >
                   <option value="">Select Department</option>
                   <option value="IT">Information Technology</option>
                   <option value="CS">Computer Science</option>
+                  <option value="IS">Information Systems</option>
+                  <option value="Engineering">Engineering</option>
                 </select>
               </div>
 
+              {/* Password with eye toggle */}
               <div className="form-group">
                 <label>Password</label>
                 <div style={{ position: 'relative' }}>
-                  <Lock size={15} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#3f3f46', pointerEvents: 'none' }} />
-                  <input type="password" name="password" placeholder="••••••••"
+                  <Lock size={15} style={iconStyle} />
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    name="password" placeholder="••••••••"
                     value={formData.password} onChange={handleChange}
-                    style={{ paddingLeft: '42px' }} required />
+                    style={{ paddingLeft: '42px', paddingRight: '42px' }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    style={eyeStyle}
+                    tabIndex={-1}
+                    onClick={() => setShowPass(p => !p)}
+                    aria-label={showPass ? 'Hide password' : 'Show password'}
+                  >
+                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
               </div>
 
+              {/* Confirm Password with eye toggle */}
               <div className="form-group">
                 <label>Confirm Password</label>
                 <div style={{ position: 'relative' }}>
-                  <Lock size={15} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#3f3f46', pointerEvents: 'none' }} />
-                  <input type="password" name="confirmPassword" placeholder="••••••••"
+                  <Lock size={15} style={iconStyle} />
+                  <input
+                    type={showConf ? 'text' : 'password'}
+                    name="confirmPassword" placeholder="••••••••"
                     value={formData.confirmPassword} onChange={handleChange}
-                    style={{ paddingLeft: '42px' }} required />
+                    style={{ paddingLeft: '42px', paddingRight: '42px' }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    style={eyeStyle}
+                    tabIndex={-1}
+                    onClick={() => setShowConf(p => !p)}
+                    aria-label={showConf ? 'Hide password' : 'Show password'}
+                  >
+                    {showConf ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
               </div>
 
-            </div>{/* end signup-fields-container */}
+            </div>
 
+            {/* Terms */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 20px' }}>
               <input
                 type="checkbox" id="terms" name="agreeTerms"
@@ -195,7 +258,6 @@ function SignUp() {
 
         </div>
       </div>
-
     </div>
   );
 }
